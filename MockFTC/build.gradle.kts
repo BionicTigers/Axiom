@@ -1,21 +1,24 @@
 plugins {
-    kotlin("jvm") version "1.9.23"
+    id("com.android.library") version "8.5.2"
+    id("org.jetbrains.kotlin.android") version "1.9.10"
 }
 
-group = "com.qualcomm.robotcore.hardware"
-version = "1.0-SNAPSHOT"
+android {
+    namespace = "com.qualcomm.robotcore" // Match the correct namespace
+    compileSdk = 34
 
-repositories {
-    mavenCentral()
-}
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
 
-dependencies {
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
-}
+    kotlinOptions {
+        jvmTarget = "17"
+    }
 
-tasks.test {
-    useJUnitPlatform()
-}
-kotlin {
-    jvmToolchain(17)
+    sourceSets {
+        getByName("main") {
+            java.srcDirs("src")
+        }
+    }
 }
