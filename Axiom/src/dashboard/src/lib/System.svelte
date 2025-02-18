@@ -20,8 +20,8 @@
     let { children, name }: { children: any, name?: string } = $props();
 </script>
 
-<div class="flex flex-col w-full h-fit ring-2 ring-neutral-900 rounded-lg p-2">
-    {#if name == undefined}
+<div class="flex flex-col w-full h-fit ring-2 ring-neutral-900 rounded-lg p-2 overflow-y-auto">
+    {#if name != undefined}
         <h1 class="text-orange-300 text-lg font-bold select-none text-center">
             {name}
         </h1>

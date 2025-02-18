@@ -2,33 +2,54 @@
   import Command, { CommandData, type InputType } from "./lib/Command.svelte";
   import Modal from "./lib/Modal.svelte";
   import System from "./lib/System.svelte";
-  import Field from "./assets/Field.svg";
+  import Field from "./lib/Field.svelte";
   import Selector from "./lib/Selector.svelte";
   import { onMount } from "svelte";
   import StateSelector from "./lib/StateSelector.svelte";
   import Graph from "./lib/Graph.svelte";
+  import Drivetrain from "./lib/Drivetrain.svelte";
+  import LoadingGear from "./lib/LoadingGear.svelte";
 
   type CommandJson = {
     name: string
     state: { [key: string]: InputType }
   }
 
+  let drivetrainPowers: number[] | undefined = $state(undefined);
+
   let socket: WebSocket | undefined = $state(undefined);
+  let heartbeatInterval: number | undefined = $state(undefined);
   let commands = $state<CommandData[]>([]);
 
   function createWebsocket() {
     if (socket) socket.close()
-    socket = new WebSocket("ws://localhost:10464/updates")
+    socket = new WebSocket("ws://localhost:10464/")
+
+    socket.onopen = () => {
+      console.log("WebSocket connected");
+      heartbeatInterval = setInterval(() => {
+        if (socket?.readyState === WebSocket.OPEN) {
+          socket.send("heartbeat");
+        }
+      }, 500);
+    };
+
     socket.onmessage = (event) => {
       let data = JSON.parse(event.data)
       if (data.type === "cycle") {
+        drivetrainPowers = data.drivetrain
+
+        // Handle command updates
         let newCommands: CommandData[] = [];
+
         for (let command of data.commands as CommandJson[]) {
           newCommands.push(new CommandData(command.name, command.state))
         }
+        
         commands = newCommands
       }
     };
+
     socket.onclose = (event) => {
       createWebsocket()
     }
@@ -132,11 +153,23 @@
       <Selector options={["FIELD", "GAMEPAD", "DRIVETRAIN"]} bind:selected={leftSideSelected} />
     </div>
     {#if leftSideSelected === "FIELD"}
-      <img src={Field} alt="Field" class="w-full h-full rounded-lg lg:w-3/4" />
+      <Field x={1000} y={1000} r={0} />
     {:else if leftSideSelected === "GAMEPAD"}
       <!-- <img src={Gamepad} alt="Gamepad" class="w-full h-full rounded-lg lg:w-3/4" /> -->
     {:else if leftSideSelected === "DRIVETRAIN"}
-      <!-- <img src={Drivetrain} alt="Drivetrain" class="w-full h-full rounded-lg lg:w-3/4" /> -->
+      {#if drivetrainPowers}
+        <Drivetrain powers={drivetrainPowers} />
+      {:else}
+        <div class="flex flex-col items-center gap-2">
+          <LoadingGear />
+          <p class="text-orange-200 text-lg select-none">
+            Waiting for drivetrain data...
+          </p>
+          <p class="text-orange-200 text-sm select-none">
+            Please send drivetrain powers using <code class="text-orange-400 font-medium">WebData</code>
+          </p>
+        </div>
+      {/if}
     {/if}
   </div>
   <div
@@ -146,11 +179,20 @@
       SCHEDULER
     </h1>
     <div class="flex flex-col items-center justify-center w-full mt-3">
-      <System>
-        {#each commands as command}
-          <Command name={command.name} state={command.state} />
-        {/each}
-      </System>
+      {#if commands.length > 0}
+        <System>
+          {#each commands as command}
+            <Command name={command.name} state={command.state} />
+          {/each}
+        </System>
+      {:else}
+        <div class="flex flex-col items-center gap-2 h-48">
+          <LoadingGear />
+          <p class="text-orange-200 text-lg font-medium select-none h-8 w-fit max-w-1/2">
+            No commands recieved
+          </p>
+        </div>
+      {/if}
       {#if socket == undefined || socket.CONNECTING}
         <p class="text-orange-200 text-lg font-medium select-none h-8 w-fit max-w-1/2">
           Attempting to connect...
@@ -160,10 +202,9 @@
   </div>
 </main>
 
-<style lang="postcss">
+<style>
   :global(body) {
     @apply bg-black;
-
     font-family: "Inter", sans-serif;
   }
 </style>

@@ -10,6 +10,11 @@
         return "text";
     }
 
+    function roundIfNumber(value: any) {
+        if (typeof value === "number") return Math.round(value);
+        return value;
+    }
+
     console.log(value.readOnly)
 </script>
 
@@ -22,10 +27,10 @@
             <State key={key} value={v} />
         {/each}
     {:else if !value.readOnly}
-        <input id={key} type={getInputType(value.value)} class="bg-neutral-800/40 text-orange-200 w-1/2 ring-2 h-8 ring-neutral-900 rounded-lg p-2 backdrop-blur-lg hover:bg-neutral-800/50 transition-colors" value={value.value} />
+        <input id={key} type={getInputType(value.value)} class="bg-neutral-800/40 text-orange-200 w-1/2 ring-2 h-8 ring-neutral-900 rounded-lg p-2 backdrop-blur-lg hover:bg-neutral-800/50 transition-colors" value={roundIfNumber(value.value)} />
     {:else}
         <p class="text-orange-200 text-lg font-medium select-none h-8 w-fit max-w-1/2 bg-neutral-800/40 ring-2 ring-neutral-900 rounded-lg p-2 backdrop-blur-lg hover:bg-neutral-800/50 transition-colors flex items-center">
-            {value.value}
+            {roundIfNumber(value.value)}
         </p>
     {/if}
 </div>

@@ -6,6 +6,7 @@ import io.github.bionictigers.axiom.web.Server
 import java.util.*
 import kotlin.collections.HashMap
 import kotlin.reflect.KMutableProperty
+import kotlin.reflect.full.findAnnotation
 
 object Scheduler {
     private val commands = HashMap<Int, Command<*>>()
@@ -64,14 +65,20 @@ object Scheduler {
         val map = HashMap<String, Any>()
 
         val fields = cmdState::class.java.declaredFields
-        fields.forEach {
-            if (it.isSynthetic || it.name == "name" || it.annotations.contains(Hidden())) return@forEach
-            it.isAccessible = true
+        fields.forEach { field ->
+            // Skip synthetic fields, the "name" field, or any field annotated with @Hidden
+            println(field.isAnnotationPresent(Hidden::class.java))
+            if (field.isSynthetic || field.name == "name" || field.isAnnotationPresent(Hidden::class.java)) {
+                return@forEach
+            }
+            field.isAccessible = true
             try {
-                val value = it.get(cmdState)?.let { it1 -> serializeVariable(it1) }
-                if (value != null) map[it.name] = value
-            } catch(_: InternalError) {
-//                println("Failed to serialize ${it.name} from ${cmdState.name} is ${it.type}")
+                val value = field.get(cmdState)?.let { serializeVariable(it) }
+                if (value != null) {
+                    map[field.name] = value
+                }
+            } catch (_: InternalError) {
+                // Handle errors if needed
             }
         }
 

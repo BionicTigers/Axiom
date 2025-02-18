@@ -11,7 +11,7 @@
     </h1>
 
     <div class="flex flex-col items-center justify-center w-full mt-3">
-        {#each commands as command}
+        {#each commands.filter(command => Object.keys(command.state).length > 0) as command}
             <div class="flex flex-col items-center justify-center w-full">
                 <h3 class="text-orange-300 text-lg font-bold select-none text-center">
                     {command.name}

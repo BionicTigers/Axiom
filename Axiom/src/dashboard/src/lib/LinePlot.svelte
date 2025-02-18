@@ -61,14 +61,17 @@
     let xTicks = $derived(xScale.ticks(10));
     let yTicks = $derived(yScale.ticks(5));
 
-    function findClosestPoint(mouseX: number) {
+    function findClosestPoint(mouseX: number, mouseY: number) {
         let closestPoint = null;
         let closestDistance = Infinity;
         let closestSeries = '';
 
         for (const [series, points] of data.entries()) {
             for (const point of points) {
-                const distance = Math.abs(xScale(point.x) - mouseX);
+                const dx = xScale(point.x) - mouseX;
+                const dy = yScale(point.y) - mouseY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
                 if (distance < closestDistance) {
                     closestDistance = distance;
                     closestPoint = point;
@@ -85,8 +88,9 @@
         
         const rect = container.getBoundingClientRect();
         const mouseX = (e.clientX - rect.left) * (width / rect.width);
+        const mouseY = (e.clientY - rect.top) * (height / rect.height);
         
-        const closest = findClosestPoint(mouseX);
+        const closest = findClosestPoint(mouseX, mouseY);
         hoveredPoint = closest;
         
         if (closest) {
@@ -147,7 +151,7 @@
                 />
 
                 <!-- Points -->
-                {#each points as point}
+                <!-- {#each points as point}
                     <circle 
                         cx={xScale(point.x)}
                         cy={yScale(point.y)}
@@ -155,7 +159,7 @@
                         fill={colors[i % colors.length]}
                         class="transition-all duration-150"
                     />
-                {/each}
+                {/each} -->
             {/each}
 
             <!-- Vertical line at hovered point -->
@@ -185,7 +189,7 @@
     </div>
 
     <!-- Legend -->
-    <div class="flex justify-center gap-4 mt-2 px-2">
+    <div class="flex justify-center gap-4 mt-2 px-2 overflow-x-auto">
         {#each [...data.entries()] as [key], i}
             <div class="flex items-center gap-2">
                 <div class="w-3 h-3 rounded-full" style="background-color: {colors[i % colors.length]}" />
@@ -195,7 +199,7 @@
     </div>
 </div>
 
-<style>
+<style lang="postcss">
     .chart-container {
         @apply w-full relative;
     }

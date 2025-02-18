@@ -1,13 +1,9 @@
 package io.github.bionictigers
 
-import commands.Command
-import commands.CommandState
-import commands.Scheduler
-import input.Gamepad
-import input.GamepadSystem
-import io.github.bionictigers.utils.generateMotionProfile
-import io.github.bionictigers.web.Server
-import utils.Pose
+import io.github.bionictigers.axiom.commands.Command
+import io.github.bionictigers.axiom.commands.Scheduler
+import io.github.bionictigers.axiom.commands.CommandState
+import io.github.bionictigers.axiom.web.Hidden
 //import io.github.bionictigers.web.WebServer
 import kotlin.concurrent.fixedRateTimer
 import kotlin.math.cbrt
@@ -16,6 +12,7 @@ import kotlin.math.sqrt
 import com.qualcomm.robotcore.hardware.Gamepad as FTCGamepad
 
 interface ArmCommand : CommandState {
+    @Hidden
     var ticks: Double
     var setPoint: Int
 
@@ -44,7 +41,7 @@ interface PivotCommand : CommandState {
 }
 
 fun main() {
-    val (gp1, gp2) = Pair(FTCGamepad(), FTCGamepad())
+//    val (gp1, gp2) = Pair(FTCGamepad(), FTCGamepad())
 
 //    val gamepadSystem = GamepadSystem(gp1, gp2)
     val command = Command(ArmCommand.default())
@@ -72,8 +69,6 @@ fun main() {
 //    }
 
 //    generateMotionProfile(100.0, 200.0, 400.0, 2000.0, 1000.0, 5000.0)
-
-    Server.start()
 
     while (true) {
         Scheduler.update()
