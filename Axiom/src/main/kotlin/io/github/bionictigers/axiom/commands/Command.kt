@@ -1,6 +1,6 @@
-package commands
+package io.github.bionictigers.axiom.commands
 
-import utils.Time
+import io.github.bionictigers.axiom.utils.Time
 
 interface CommandState {
     val name: String
@@ -30,7 +30,7 @@ interface CommandState {
  * @see Scheduler
  * @see System
  */
-class Command<T: CommandState>(val state: T) {
+class Command<T: CommandState>(val state: T, private val interval: Time? = null) {
     val dependencies = ArrayList<Command<*>>()
 
     private var predicate: (T) -> Boolean = { true }
@@ -133,6 +133,8 @@ class Command<T: CommandState>(val state: T) {
      */
     internal fun execute(): Boolean {
         val currentTime = Time.fromMilliseconds(java.lang.System.currentTimeMillis())
+
+        if (interval != null && currentTime - state.enteredAt >= interval) return false
 
         if (state.enteredAt == Time())
             state.enteredAt = currentTime

@@ -1,13 +1,11 @@
-package commands
+package io.github.bionictigers.axiom.commands
 
-import io.javalin.plugin.bundled.RouteOverviewUtil.metaInfo
-import io.javalin.util.JavalinLogger.warn
-import utils.Time
+import io.github.bionictigers.axiom.utils.Time
+import io.github.bionictigers.axiom.web.Hidden
+import io.github.bionictigers.axiom.web.Server
 import java.util.*
 import kotlin.collections.HashMap
 import kotlin.reflect.KMutableProperty
-import kotlin.reflect.jvm.kotlinProperty
-import kotlin.reflect.typeOf
 
 object Scheduler {
     private val commands = HashMap<Int, Command<*>>()
@@ -17,8 +15,14 @@ object Scheduler {
     private val removeQueue: ArrayList<Command<*>> = ArrayList()
 
     private var changed = false
+    private var inUpdateCycle = false
 
     var loopDeltaTime = Time()
+
+    init {
+        println("starting Server")
+        Server.start()
+    }
 
     /**
      * Adds commands to the scheduler.
@@ -29,11 +33,19 @@ object Scheduler {
      * @see Command
      */
     fun add(vararg command: Command<*>) {
-        addQueue.addAll(command)
+        if (inUpdateCycle)
+            addQueue.addAll(command)
+        else {
+            command.forEach {
+                internalAdd(it)
+            }
+        }
     }
 
     fun add(commands: Collection<Command<*>>) {
-        addQueue.addAll(commands)
+        commands.forEach {
+            add(it)
+        }
     }
 
     private fun serializeVariable(state: Any): Any {
@@ -53,29 +65,26 @@ object Scheduler {
 
         val fields = cmdState::class.java.declaredFields
         fields.forEach {
-            if (it.isSynthetic || it.name == "name") return@forEach
+            if (it.isSynthetic || it.name == "name" || it.annotations.contains(Hidden())) return@forEach
             it.isAccessible = true
             try {
-                map[it.name] = it.get(cmdState)?.let { it1 -> serializeVariable(it1) }!!
+                val value = it.get(cmdState)?.let { it1 -> serializeVariable(it1) }
+                if (value != null) map[it.name] = value
             } catch(_: InternalError) {
-                warn("Failed to serialize ${it.name} from ${cmdState.name} is ${it.type}")
+//                println("Failed to serialize ${it.name} from ${cmdState.name} is ${it.type}")
             }
         }
 
         return map
     }
 
-    private fun serializeCommands(): ArrayList<Map<String, Any>> {
+    fun serialize(): ArrayList<Map<String, Any>> {
         val array = ArrayList<Map<String, Any>>()
         commands.values.forEachIndexed { _, value ->
             array.add(mapOf("name" to value.state.name, "state" to serializeState(value.state)))
         }
 
         return array
-    }
-
-    fun serialize(): Map<String, Any> {
-        return mapOf("type" to "cycle", "commands" to serializeCommands())
     }
 
     private fun internalAdd(command: Command<*>) {
@@ -92,8 +101,8 @@ object Scheduler {
      * @see System
      */
     fun addSystem(vararg system: System) {
-        addQueue.addAll(system.mapNotNull { it.beforeRun })
-        addQueue.addAll(system.mapNotNull { it.afterRun })
+        add(system.mapNotNull { it.beforeRun })
+        add(system.mapNotNull { it.afterRun })
     }
 
     /**
@@ -155,6 +164,7 @@ object Scheduler {
      * @see Command
      */
     fun update() {
+        inUpdateCycle = true
         val startTime = java.lang.System.currentTimeMillis()
 
         addQueue.forEach(this::internalAdd)
@@ -171,6 +181,7 @@ object Scheduler {
         removeQueue.clear()
 
         loopDeltaTime = Time.fromMilliseconds(java.lang.System.currentTimeMillis() - startTime)
+        inUpdateCycle = false
     }
 
     fun clear() {

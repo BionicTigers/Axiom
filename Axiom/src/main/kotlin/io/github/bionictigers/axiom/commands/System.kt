@@ -1,4 +1,4 @@
-package commands
+package io.github.bionictigers.axiom.commands
 
 /**
  * A system is the base class for all systems/mechanisms.
