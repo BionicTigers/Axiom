@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { CommandData } from "./Command.svelte";
+  import SelectorTab from "./SelectorTab.svelte";
     import StateSelectorOption from "./StateSelectorOption.svelte";
 
     let { state = $bindable<Array<string>>([]), commands }: { state: Array<string>, commands: Array<CommandData> } = $props();
@@ -13,12 +14,11 @@
     <div class="flex flex-col items-center justify-center w-full mt-3">
         {#each commands.filter(command => Object.keys(command.state).length > 0) as command}
             <div class="flex flex-col items-center justify-center w-full">
-                <h3 class="text-orange-300 text-lg font-bold select-none text-center">
-                    {command.name}
-                </h3>
-                {#each Object.entries(command.state) as [key, value]}
-                    <StateSelectorOption bind:state={state} key={key} value={value} path={command.name} />
-                {/each}
+                <SelectorTab name={command.name}>
+                    {#each Object.entries(command.state) as [key, value]}
+                        <StateSelectorOption bind:state={state} key={key} value={value} path={command.name} />
+                    {/each}
+                </SelectorTab>
             </div>
         {/each}
     </div>

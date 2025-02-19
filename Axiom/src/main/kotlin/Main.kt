@@ -3,6 +3,7 @@ package io.github.bionictigers
 import io.github.bionictigers.axiom.commands.Command
 import io.github.bionictigers.axiom.commands.Scheduler
 import io.github.bionictigers.axiom.commands.CommandState
+import io.github.bionictigers.axiom.web.Editable
 import io.github.bionictigers.axiom.web.Hidden
 //import io.github.bionictigers.web.WebServer
 import kotlin.concurrent.fixedRateTimer
@@ -14,13 +15,14 @@ import com.qualcomm.robotcore.hardware.Gamepad as FTCGamepad
 interface ArmCommand : CommandState {
     @Hidden
     var ticks: Double
-    var setPoint: Int
+    @Editable
+    var setPoint: Pose
 
     companion object {
         fun default(): ArmCommand {
             return object : ArmCommand, CommandState by CommandState.default("Arm") {
                 override var ticks = 0.0
-                override var setPoint = 1000
+                override var setPoint = Pose(100, 0, 50)
             }
         }
     }
@@ -29,12 +31,18 @@ interface ArmCommand : CommandState {
 interface PivotCommand : CommandState {
     var ticks: Int
     var setPoint: Int
+    var setPoint2: Int
+    var setPoint3: Int
+    var setPoint4: Int
 
     companion object {
         fun default(): PivotCommand {
             return object : PivotCommand, CommandState by CommandState.default("Pivot") {
                 override var ticks = 0
                 override var setPoint = 2000
+                override var setPoint2 = 2000
+                override var setPoint3 = 2000
+                override var setPoint4 = 2000
             }
         }
     }

@@ -1,7 +1,10 @@
 package io.github.bionictigers.axiom.web
 
 import com.qualcomm.robotcore.util.RobotLog
+import com.squareup.moshi.JsonClass
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.adapter
+import com.squareup.moshi.adapters.PolymorphicJsonAdapterFactory
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import io.github.bionictigers.axiom.commands.Scheduler
 import fi.iki.elonen.NanoWSD
@@ -13,18 +16,33 @@ import fi.iki.elonen.NanoWSD.WebSocketFrame
 import fi.iki.elonen.NanoWSD.WebSocketFrame.CloseCode
 import java.io.IOException
 
+@JsonClass(generateAdapter = true)
+sealed class IncomingMessage {
+    abstract val type: String
+
+    @JsonClass(generateAdapter = true)
+    data class Edit(
+        override val type: String = "edit",
+        val path: String,
+        val value: Any
+    ) : IncomingMessage()
+}
+
 object Server {
     // Keep track of active WebSocket connections
     private val connections = mutableListOf<UpdatesWebSocket>()
 
     // Moshi instance configured with the Kotlin adapter
     private val moshi: Moshi = Moshi.Builder()
+        .add(PolymorphicJsonAdapterFactory.of(IncomingMessage::class.java, "type")
+            .withSubtype(IncomingMessage.Edit::class.java, "edit"))
         .add(KotlinJsonAdapterFactory())
         .build()
 
-    // Create a generic adapter. If you have a specific type, e.g. Updates::class.java,
-    // then create an adapter for that type.
-    private val anyAdapter = moshi.adapter(Any::class.java)
+    @OptIn(ExperimentalStdlibApi::class)
+    private val anyAdapter = moshi.adapter<Any>()
+    @OptIn(ExperimentalStdlibApi::class)
+    private val messageAdapter = moshi.adapter<IncomingMessage>()
 
     @JvmStatic
     internal fun start() {
@@ -96,7 +114,24 @@ object Server {
             message?.let {
                 val clientMsg = it.textPayload
                 RobotLog.dd("Axiom", "Received from client: $clientMsg")
-                // Handle incoming message (e.g., echo or process command)
+
+                if (clientMsg == "ping") return
+
+                try {
+                    when (val msg = messageAdapter.fromJson(clientMsg)) {
+                        is IncomingMessage.Edit -> {
+                            println("Edit message received:")
+                            println("Path: ${msg.path} to ${msg.value}")
+
+                            Scheduler.edit(msg.path, msg.value)
+                        }
+                        null -> {
+                            RobotLog.dd("Axiom", "Received null after parsing the message")
+                        }
+                    }
+                } catch (e: Exception) {
+                    RobotLog.ww("Axiom", "Failed to parse client message: ${e.message}")
+                }
             }
         }
 

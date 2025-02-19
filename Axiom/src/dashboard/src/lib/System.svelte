@@ -27,7 +27,7 @@
         </h1>
     {/if}
 
-    <div class="flex flex-col items-center justify-center w-full mt-3">
+    <div class="flex flex-col items-center justify-center w-full">
         {@render children()}
     </div>
 </div>

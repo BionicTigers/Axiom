@@ -53,6 +53,8 @@ dependencies {
 
     implementation("com.squareup.moshi:moshi:1.14.0")
     implementation("com.squareup.moshi:moshi-kotlin:1.14.0")
+    implementation("com.squareup.moshi:moshi-adapters:1.14.0"
+    )
 
     implementation("org.nanohttpd:nanohttpd-websocket:2.3.1") //{
 //        exclude(group = "org.nanohttpd", module = "nanohttpd")
