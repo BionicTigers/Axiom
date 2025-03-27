@@ -41,16 +41,14 @@
             graphData = new Map(graphData);
         })
     })
-
-    $inspect(graphData);
 </script>
 
-<div class="flex flex-col w-full h-fit ring-2 ring-neutral-900 rounded-lg p-2">
+<div class="flex flex-col w-full h-full p-2">
     <h1 class="text-orange-300 text-lg font-bold select-none text-center">
         Graph
     </h1>
     
-    <div class="w-full h-64 bg-neutral-800/40 ring-2 ring-neutral-900 rounded-lg p-2 backdrop-blur-lg">
+    <div class="w-full h-full bg-neutral-800/40 mt-3 rounded-lg p-2 backdrop-blur-lg">
         <LinePlot bind:data={graphData} />
     </div>
 </div>

@@ -44,35 +44,45 @@ export namespace Websocket {
                 value: value
             }))
         }
+
+        export function opModeUpdate(opMode: string, state: string) {
+            socket?.send(JSON.stringify({
+                type: "opModeUpdate",
+                opMode: opMode,
+                state: state
+            }))
+        }
     }
 }
 
 function createWebsocket() {
     if (socket) Websocket.close()
-    socket = new WebSocket("ws://localhost:10464/")
+    // socket = new WebSocket("ws://localhost:10464/")
+    socket = new WebSocket("ws://192.168.43.1:10464/")
     let liveSocket = socket
 
     Websocket.state.set(Websocket.State.Connecting)
 
-    socket.onopen = () => {
+    liveSocket.onopen = () => {
         console.log("WebSocket connected");
         Websocket.state.set(Websocket.State.Connected)
     };
 
-    socket.onmessage = (event) => {
+    liveSocket.onmessage = (event) => {
         let data = JSON.parse(event.data)
         if (onMessage.has(data.type)) {
             onMessage.get(data.type)?.(data)
         }
     };
 
-    socket.onerror = (event) => {
+    liveSocket.onerror = (event) => {
         console.error(event)
     }
 
-    socket.onclose = (event) => {
+    liveSocket.onclose = (event) => {
         Websocket.state.set(Websocket.State.Disconnected)
-        if (liveSocket == socket) createWebsocket()
+        // if (liveSocket == socket) createWebsocket()
+        createWebsocket()
         socket = undefined
     }
 }

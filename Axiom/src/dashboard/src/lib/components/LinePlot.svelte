@@ -6,11 +6,11 @@
         data: Map<string, Array<{x: number, y: number}>>
     }>();
     
-    const colors = ['#F50057','#42A5F5','#26A69A','#9575CD'];
+    const colors = ['#F50057','#42A5F5','#26A69A','#9575CD', '#FF8A65', '#FFD54F', '#66BB6A', '#FF7043', '#7986CB', '#EF5350'];
     const marginTop = 20;
     const marginRight = 20;
     const marginBottom = 30;
-    const marginLeft = 40;
+    const marginLeft = 60;
 
     let container: HTMLDivElement;
     let width = $state(600);
@@ -109,20 +109,39 @@
         tooltip = null;
         hoveredPoint = null;
     }
+
+    function clipNumber(value: number) {
+        if (value > 1000000000) return (value / 1000000000) + 'B';
+        if (value > 1000000) return (value / 1000000) + 'M';
+        return value
+    }
 </script>
 
-<div class="flex flex-col h-full">
-    <div class="chart-container flex-1" bind:this={container} 
-        on:mousemove={handleMouseMove}
-        on:mouseleave={handleMouseLeave}>
+<div class="flex flex-col h-full w-full">
+    <div class="chart-container flex-1 h-full w-full" bind:this={container} 
+        onmousemove={handleMouseMove}
+        onmouseleave={handleMouseLeave}
+        aria-label="Line Plot"
+        role="region">
         <svg viewBox="0 0 {width} {height}" preserveAspectRatio="xMidYMid meet">
+            <defs>
+                <clipPath id="chart-area">
+                    <rect 
+                        x={marginLeft} 
+                        y={marginTop} 
+                        width={width - marginLeft - marginRight} 
+                        height={height - marginTop - marginBottom} 
+                    />
+                </clipPath>
+            </defs>
+
             <!-- Y-axis and grid -->
             <g class="y-axis" transform="translate({marginLeft}, 0)">
                 <path class="domain" stroke="currentColor" d="M0,{marginTop} V{height - marginBottom}" />
                 {#each yTicks as tick}
                     <g class="tick" transform="translate(0,{yScale(tick)})">
                         <line stroke="currentColor" x2={width - marginLeft - marginRight} stroke-opacity="0.1" />
-                        <text fill="currentColor" x="-10" dy="0.32em" text-anchor="end">{tick}</text>
+                        <text fill="currentColor" x="-10" dy="0.32em" text-anchor="end">{clipNumber(tick)}</text>
                     </g>
                 {/each}
             </g>
@@ -133,47 +152,38 @@
                 {#each xTicks as tick}
                     <g class="tick" transform="translate({xScale(tick)},0)">
                         <line stroke="currentColor" y2={-height + marginTop + marginBottom} stroke-opacity="0.1" />
-                        <text fill="currentColor" y="20" text-anchor="middle">{tick}</text>
+                        <text fill="currentColor" y="20" text-anchor="middle">{clipNumber(tick)}</text>
                     </g>
                 {/each}
             </g>
 
             <!-- Lines and Points -->
-            {#each [...data.entries()] as [key, points], i}
-                <!-- Line -->
-                <path 
-                    d={chartLine(points)}
-                    fill="none"
-                    stroke={colors[i % colors.length]}
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                />
-
-                <!-- Points -->
-                <!-- {#each points as point}
-                    <circle 
-                        cx={xScale(point.x)}
-                        cy={yScale(point.y)}
-                        r={hoveredPoint?.point === point ? "6" : "4"}
-                        fill={colors[i % colors.length]}
-                        class="transition-all duration-150"
+            <g clip-path="url(#chart-area)">
+                {#each [...data.entries()] as [key, points], i}
+                    <!-- Line -->
+                    <path 
+                        d={chartLine(points)}
+                        fill="none"
+                        stroke={colors[i % colors.length]}
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
                     />
-                {/each} -->
-            {/each}
+                {/each}
 
-            <!-- Vertical line at hovered point -->
-            {#if hoveredPoint}
-                <line
-                    x1={xScale(hoveredPoint.point.x)}
-                    x2={xScale(hoveredPoint.point.x)}
-                    y1={marginTop}
-                    y2={height - marginBottom}
-                    stroke="currentColor"
-                    stroke-opacity="0.2"
-                    stroke-dasharray="4,4"
-                />
-            {/if}
+                <!-- Vertical line at hovered point -->
+                {#if hoveredPoint}
+                    <line
+                        x1={xScale(hoveredPoint.point.x)}
+                        x2={xScale(hoveredPoint.point.x)}
+                        y1={marginTop}
+                        y2={height - marginBottom}
+                        stroke="currentColor"
+                        stroke-opacity="0.2"
+                        stroke-dasharray="4,4"
+                    />
+                {/if}
+            </g>
         </svg>
 
         {#if tooltip}
@@ -189,10 +199,10 @@
     </div>
 
     <!-- Legend -->
-    <div class="flex justify-center gap-4 mt-2 px-2 overflow-x-auto">
+    <div class="flex justify-center gap-4 mt-2 px-2 overflow-x-auto w-full">
         {#each [...data.entries()] as [key], i}
-            <div class="flex items-center gap-2">
-                <div class="w-3 h-3 rounded-full" style="background-color: {colors[i % colors.length]}" />
+            <div class="flex items-center gap-2 w-fit">
+                <div class="w-3 h-3 rounded-full" style="background-color: {colors[i % colors.length]}"></div>
                 <span class="text-orange-300 text-sm">{key}</span>
             </div>
         {/each}

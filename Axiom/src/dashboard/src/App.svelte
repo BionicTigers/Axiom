@@ -1,16 +1,17 @@
 <script lang="ts">
-  import Command, { CommandData, type InputType } from "./lib/Command.svelte";
-  import Modal from "./lib/Modal.svelte";
-  import System from "./lib/System.svelte";
-  import Field from "./lib/Field.svelte";
-  import Selector from "./lib/Selector.svelte";
+  import Command, { CommandData, type InputType } from "./lib/components/Command.svelte";
+  import Modal from "./lib/components/Modal.svelte";
+  import System from "./lib/components/System.svelte";
+  import Field from "./lib/components/Field.svelte";
+  import Selector from "./lib/components/Selector.svelte";
   import { onMount } from "svelte";
-  import StateSelector from "./lib/StateSelector.svelte";
-  import Graph from "./lib/Graph.svelte";
-  import Drivetrain from "./lib/Drivetrain.svelte";
-  import LoadingGear from "./lib/LoadingGear.svelte";
-  import { Websocket } from "./lib/Networking";
+  import StateSelector from "./lib/components/StateSelector.svelte";
+  import Graph from "./lib/components/Graph.svelte";
+  import Drivetrain from "./lib/components/Drivetrain.svelte";
+  import LoadingGear from "./lib/components/LoadingGear.svelte";
+  import { Websocket } from "./lib/components/Networking";
   import { get } from "svelte/store";
+  import Gamepad, { GamepadData } from "./lib/components/Gamepad.svelte";
 
   type CommandJson = {
     name: string;
@@ -21,6 +22,14 @@
   let drivetrainPowers: number[] | undefined = $state(undefined);
 
   let commands = $state<CommandData[]>([]);
+  let teleops = $state<String[]>([]);
+  let autos = $state<String[]>([]);
+
+  let selectedOpMode = $state("NONE");
+  // Selected, Init, Running
+  let opModeState = $state("Selected");
+
+  let telemetry = $state<String[]>([])
 
   Websocket.on("cycle", (data) => {
     drivetrainPowers = data.drivetrain;
@@ -29,10 +38,22 @@
     let newCommands: CommandData[] = [];
 
     for (let command of data.commands as CommandJson[]) {
-      newCommands.push(new CommandData(command.name, command.state, command.hash));
+      newCommands.push(
+        new CommandData(command.name, command.state, command.hash)
+      );
     }
 
     commands = newCommands;
+  });
+
+  Websocket.on("opModeList", (data) => {
+    teleops = data.teleops;
+    autos = data.autos;
+  });
+
+  Websocket.on("opMode", (data) => {
+    selectedOpMode = data.selected;
+    opModeState = data.state;
   });
 
   onMount(() => {
@@ -49,6 +70,8 @@
   });
 
   let WebsocketState = Websocket.state;
+
+  let gamepadData = $state(new GamepadData());
 
   let isPaused = $state(false);
   let graphModal = $state(false);
@@ -101,6 +124,53 @@
   <h1 class="text-orange-500 text-lg font-black text-center select-none">
     Op Mode
   </h1>
+  <div class="flex flex-col items-center">
+    <select
+      class="bg-neutral-800/40 ring-2 text-orange-400 ring-neutral-900 rounded-lg p-2 w-1/5 mt-5 backdrop-blur-lg hover:bg-neutral-800/50 transition-colors"
+      bind:value={selectedOpMode}
+    >
+      <optgroup label="Teleop">
+        {#each teleops as teleop}
+          <option value={teleop}>{teleop}</option>
+        {/each}
+      </optgroup>
+      <optgroup label="Autos">
+        {#each autos as auto}
+          <option value={auto}>{auto}</option>
+        {/each}
+      </optgroup>
+    </select>
+	<div class="bg-neutral-800 h-72 w-96 rounded-xl flex flex-col">
+		{#each telemetry as line}
+			<p>line</p>
+		{/each}
+	</div>
+    <button
+      class="bg-neutral-800/40 ring-2 text-orange-400 ring-neutral-900 rounded-lg p-2 w-1/5 mt-5 backdrop-blur-lg hover:bg-neutral-800/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      disabled={selectedOpMode === "NONE"}
+      onclick={() => {
+        if (selectedOpMode === "NONE") return;
+        if (opModeState === "Selected") {
+          opModeState = "Init";
+          Websocket.Functions.opModeUpdate(selectedOpMode, "Init");
+        } else if (opModeState === "Init") {
+          opModeState = "Running";
+          Websocket.Functions.opModeUpdate(selectedOpMode, "Start");
+        } else if (opModeState === "Running") {
+          opModeState = "Selected";
+          Websocket.Functions.opModeUpdate(selectedOpMode, "Stop");
+        }
+      }}
+    >
+      {selectedOpMode === "NONE"
+        ? "Select Op Mode"
+        : opModeState === "Selected"
+          ? "Init"
+          : opModeState === "Init"
+            ? "Start"
+            : "Stop"}
+    </button>
+  </div>
 </Modal>
 
 <Modal enabled={graphModal} {closeModal}>
@@ -108,7 +178,7 @@
     Graph
   </h1>
 
-  <div class="flex w-full h-fit ring-2 ring-neutral-900 rounded-lg p-2">
+  <div class="flex w-full p-2 h-[40vh] min-h-[18.5rem]">
     <StateSelector bind:state={graphState} {commands} />
     <Graph
       {graphState}
@@ -158,7 +228,7 @@
     {#if leftSideSelected === "FIELD"}
       <Field x={1000} y={1000} r={0} />
     {:else if leftSideSelected === "GAMEPAD"}
-      <!-- <img src={Gamepad} alt="Gamepad" class="w-full h-full rounded-lg lg:w-3/4" /> -->
+      <Gamepad bind:gamepad={gamepadData} />
     {:else if leftSideSelected === "DRIVETRAIN"}
       {#if drivetrainPowers}
         <Drivetrain powers={drivetrainPowers} />
@@ -187,7 +257,11 @@
       {#if commands.length > 0}
         <System>
           {#each commands as command}
-            <Command name={command.name} state={command.state} hash={command.hash} />
+            <Command
+              name={command.name}
+              state={command.state}
+              hash={command.hash}
+            />
           {/each}
         </System>
       {:else}

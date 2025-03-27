@@ -1,5 +1,5 @@
 <script lang="ts">
-    import Field from "../assets/Field.svg";
+    import Field from "../../assets/Field.svg";
 
     // x and y are in mm
     // r is in radians

@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { InputType } from "./Command.svelte";
-  import { Websocket } from "./Networking";
-    import State from "./State.svelte";
+    import { Websocket } from "./Networking";
+    import State from "../components/State.svelte";
     let { key, value, path }: { key: string, value: InputType, path: string } = $props();
 
     function getInputType(value: any) {
@@ -12,7 +12,7 @@
     }
 
     function roundIfNumber(value: any) {
-        if (typeof value === "number") return Math.round(value);
+        if (typeof value === "number") return Math.round(value * 1000) / 1000;
         return value;
     }
 
