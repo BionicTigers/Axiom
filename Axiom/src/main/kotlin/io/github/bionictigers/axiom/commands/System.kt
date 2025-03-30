@@ -10,8 +10,15 @@ package io.github.bionictigers.axiom.commands
  * @see Command
  */
 interface System {
-    val dependencies: List<System>
+    val name: String
+
+    val dependencies: List<System>?
+        get() = emptyList()
 
     val beforeRun: Command<*>?
+        get() = null
     val afterRun: Command<*>?
+        get() = null
+
+    fun onEnter() {}
 }

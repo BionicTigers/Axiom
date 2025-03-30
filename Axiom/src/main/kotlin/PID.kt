@@ -1,0 +1,85 @@
+package io.github.bionictigers
+
+import io.github.bionictigers.axiom.utils.Time
+import io.github.bionictigers.axiom.web.Editable
+import io.github.bionictigers.io.github.bionictigers.axiom.web.Display
+
+/**
+ * Class to control errors
+ * Takes in either PIDTerms (Used for realtime editing) or kP, tI, tD
+ * Takes in pvMin and pvMax which is the minimum and maximum that the process value can reach
+ * Also takes in cvMin and cvMax which is the maximum output, usually -1 to 1
+ *
+ * @param kP Proportional constant
+ * @param tI Integral time
+ * @param tD Derivative time
+ * @param pvMin Minimum process value
+ * @param pvMax Maximum process value
+ * @param cvMin Minimum control variable
+ * @param cvMax Maximum control variable
+ */
+class PID(
+    @Display @Editable var kP: Double,
+    @Display @Editable var tI: Double,
+    @Display @Editable var tD: Double,
+    var pvMin: Double,
+    var pvMax: Double,
+    var cvMin: Double,
+    var cvMax: Double,
+    private val sampleTime: Int = 20
+) {
+    //Time between cycles, in ms
+
+    private val elapsedTime = Time()
+
+    //Expose P, I, D, E, CV variables to outside the class for logging
+    var p: Double = 0.0
+        internal set
+    var i: Double = 0.0
+        internal set
+    var d: Double = 0.0
+        internal set
+    var previousError: Double = 0.0
+        internal set
+    @Display
+    var cv: Double = 0.0
+        internal set
+
+    /**
+     * Calculate the control variable (Output)
+     */
+    fun calculate(setPoint: Number, processValue: Number): Double {
+        val dt = elapsedTime.seconds()
+
+        //Check if pid should calculate again
+//        if (dt > sampleTime / 1000.0) {
+            //Error in terms of processValue (percentage)
+            val error = ((setPoint.toDouble() - processValue.toDouble()) / (pvMax - pvMin)).let { if (it.isNaN() || it.isInfinite()) 0.0 else it }
+
+            p = kP * error
+            i += if (cv > cvMin && cv < cvMax && tI != 0.0) 1.0 / tI * error else 0.0
+            d = kP * tD / 60.0 * (previousError - error)
+
+            //Multiply I by kP last to allow for real time editing
+            cv = p + kP * i + d
+
+            //Prepare for next call
+            previousError = error
+//        }
+
+        return cv.coerceIn(cvMin, cvMax)
+    }
+
+    /**
+     * Resets the integral and cv
+     */
+    fun reset() {
+        i = 0.0
+        cv = 0.0
+        previousError = 0.0
+    }
+
+    fun log() {
+        println("P: $p, I: $i, D: $d, E: $previousError")
+    }
+}

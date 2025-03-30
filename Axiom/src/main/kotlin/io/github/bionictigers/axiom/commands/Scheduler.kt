@@ -4,19 +4,23 @@ import com.qualcomm.robotcore.util.RobotLog
 import io.github.bionictigers.axiom.utils.Time
 import io.github.bionictigers.axiom.web.Editable
 import io.github.bionictigers.axiom.web.Hidden
-import io.github.bionictigers.axiom.web.Server
+import io.github.bionictigers.axiom.web.ObjectType
 import io.github.bionictigers.io.github.bionictigers.axiom.utils.convertTo
 import io.github.bionictigers.io.github.bionictigers.axiom.utils.hasAnnotationOnProperty
 import io.github.bionictigers.io.github.bionictigers.axiom.web.Display
 import io.github.bionictigers.io.github.bionictigers.axiom.web.Value
 import java.lang.reflect.Field
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
 object Scheduler {
-    private val commands = HashMap<Int, Command<*>>()
+    private val commands = ConcurrentHashMap<Int, Command<*>>()
     private val sortedCommands = ArrayList<Command<*>>()
+
+    private val systems = ConcurrentHashMap<Int, System>()
+//    private val systemsToCommands = ConcurrentHashMap<Int, Int>()
 
     private val addQueue: ArrayList<Command<*>> = ArrayList()
     private val removeQueue: ArrayList<Command<*>> = ArrayList()
@@ -27,10 +31,9 @@ object Scheduler {
 
     var loopDeltaTime = Time()
 
-    init {
-        println("starting Server")
-        Server.start()
-    }
+//    init {
+//        Server.start()
+//    }
 
     /**
      * Adds commands to the scheduler.
@@ -69,15 +72,15 @@ object Scheduler {
                         map[field.name] = serializeVariable(field.get(state), readOnly || !hasAnnotationOnProperty<Editable>(state, field.name))
                     }
                 }
-                return map
+                return map.ifEmpty { throw InternalError("Failed to serialize") }
             }
         }
     }
 
-    private fun serializeState(cmdState: CommandState): Map<String, Any> {
+    private fun serializeState(cmdState: Any): Map<String, Any>? {
         val map = HashMap<String, Any>()
 
-        cmdState::class.java.declaredFields.forEach {
+        (cmdState::class.java.declaredFields + cmdState::class.java.superclass.declaredFields).forEach {
             val isHidden = hasAnnotationOnProperty<Hidden>(cmdState, it.name)
             val isEditable = hasAnnotationOnProperty<Editable>(cmdState, it.name)
             if (it.isSynthetic || it.name == "name" || isHidden) return@forEach
@@ -90,13 +93,16 @@ object Scheduler {
             }
         }
 
-        return map
+        return map.ifEmpty { null }
     }
 
     fun serialize(): ArrayList<Map<String, Any>> {
         val array = ArrayList<Map<String, Any>>()
         commands.values.forEach {
-            array.add(mapOf("name" to it.state.name, "hash" to it.hashCode(), "state" to serializeState(it.state)))
+            array += mapOf("name" to it.state.name, "hash" to it.hashCode(), "state" to (serializeState(it.state) ?: mapOf()), "type" to ObjectType.Command)
+        }
+        systems.values.forEach {
+            array += mapOf("name" to it.name, "hash" to it.hashCode(), "state" to (serializeState(it) ?: mapOf()), "type" to ObjectType.System)
         }
 
         return array
@@ -118,6 +124,9 @@ object Scheduler {
     fun addSystem(vararg system: System) {
         add(system.mapNotNull { it.beforeRun })
         add(system.mapNotNull { it.afterRun })
+        system.forEach {
+            systems[it.hashCode()] = it
+        }
     }
 
     /**
@@ -172,7 +181,41 @@ object Scheduler {
     }
 
     fun edit(path: String, value: Any) {
-        editQueue.add(path to value)
+        if (inUpdateCycle)
+            editQueue.add(path to value)
+        else
+            internalEdit(path to value)
+    }
+
+    //TODO: Make more universal/delegate
+    private fun internalEdit(edit: Pair<String, Any>) {
+        val (path, value) = edit
+        val splitPath = path.split(".")
+        val type = if (splitPath[0] == "Command") commands else systems
+        val command = type[splitPath[1].toInt()] ?: return
+
+        //Unsafe magic!
+        var index = 2
+        try {
+            var obj: Any = if (splitPath[0] == "Command") (command as Command<*>).state else command
+            lateinit var field: Field
+            splitPath.subList(2, splitPath.size).forEach { fieldName ->
+                field = obj::class.java.getDeclaredField(fieldName)
+                field.isAccessible = true
+                index++
+                if (splitPath.size != index) obj = field.get(obj)!!
+            }
+
+            val target = field.get(obj)!!
+
+            field.set(obj, (value as String).convertTo(target::class))
+        } catch(e: NoSuchFieldException) {
+            RobotLog.ww("Axiom", "Unable to modify $path, failed to find $index: ${splitPath[index]} in ${splitPath[index - 1]}.")
+        } catch(e: NumberFormatException) {
+            RobotLog.ww("Axiom", "Unable to set $path to $value as they do not share a type.")
+        } catch(e: IllegalArgumentException) {
+            RobotLog.ww("Axiom", "Unable to set $path to $value as they do not share a type.")
+        }
     }
 
     /**
@@ -186,35 +229,7 @@ object Scheduler {
         inUpdateCycle = true
         val startTime = java.lang.System.currentTimeMillis()
 
-        editQueue.forEach {
-            val (path, value) = it
-            val splitPath = path.split(".")
-            val command = commands[splitPath[0].toInt()] ?: return@forEach
-
-            //Unsafe magic!
-            var index = 1
-            try {
-                var obj: Any = command.state
-                lateinit var field: Field
-                splitPath.subList(1, splitPath.size).forEach { fieldName ->
-                    println(obj::class.java.declaredFields.contentDeepToString())
-                    field = obj::class.java.getDeclaredField(fieldName)
-                    field.isAccessible = true
-                    index++
-                    if (splitPath.size != index) obj = field.get(obj)!!
-                }
-
-                val target = field.get(obj)!!
-
-                field.set(obj, (value as String).convertTo(target::class))
-            } catch(e: NoSuchFieldException) {
-                RobotLog.ww("Axiom", "Unable to modify $path, failed to find $index: ${splitPath[index]} in ${splitPath[index - 1]}.")
-            } catch(e: NumberFormatException) {
-                RobotLog.ww("Axiom", "Unable to set $path to $value as they do not share a type.")
-            } catch(e: IllegalArgumentException) {
-                RobotLog.ww("Axiom", "Unable to set $path to $value as they do not share a type.")
-            }
-        }
+        editQueue.forEach(this::internalEdit)
         editQueue.clear()
 
         addQueue.forEach(this::internalAdd)
@@ -231,6 +246,7 @@ object Scheduler {
         removeQueue.clear()
 
         loopDeltaTime = Time.fromMilliseconds(java.lang.System.currentTimeMillis() - startTime)
+
         inUpdateCycle = false
     }
 

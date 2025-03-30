@@ -2,26 +2,6 @@ package io.github.bionictigers.axiom.commands
 
 import io.github.bionictigers.axiom.utils.Time
 
-interface CommandState {
-    val name: String
-    var enteredAt: Time
-    var timeInScheduler: Time
-    var lastExecutedAt: Time
-    var deltaTime: Time
-
-    companion object {
-        fun default(name: String = "Unnamed Command"): CommandState {
-            return object : CommandState {
-                override val name = name
-                override var enteredAt = Time()
-                override var timeInScheduler = Time()
-                override var lastExecutedAt = Time()
-                override var deltaTime = Time.fromSeconds(0.0)
-            }
-        }
-    }
-}
-
 /**
  * Commands are used to execute functions in the scheduler.
  *
@@ -30,7 +10,11 @@ interface CommandState {
  * @see Scheduler
  * @see System
  */
-data class Command<T: CommandState>(val state: T, private val interval: Time? = null) {
+@Suppress("unused")
+data class Command<T: BaseCommandState>(
+    val state: T,
+    private val interval: Time? = null
+) {
     val dependencies = ArrayList<Command<*>>()
 
     private var predicate: (T) -> Boolean = { true }
@@ -134,13 +118,13 @@ data class Command<T: CommandState>(val state: T, private val interval: Time? = 
     internal fun execute(): Boolean {
         val currentTime = Time.fromMilliseconds(java.lang.System.currentTimeMillis())
 
-        if (interval != null && currentTime - state.enteredAt >= interval) return false
+        state.deltaTime = currentTime - state.lastExecutedAt
+        state.timeInScheduler = currentTime - state.enteredAt
+        if (interval != null && state.deltaTime < interval) return false
 
         if (state.enteredAt == Time())
             state.enteredAt = currentTime
 
-        state.deltaTime = currentTime - state.lastExecutedAt
-        state.timeInScheduler = currentTime - state.enteredAt
         state.lastExecutedAt = currentTime
 
         var result = false
@@ -156,14 +140,37 @@ data class Command<T: CommandState>(val state: T, private val interval: Time? = 
 
         if (result) {
             onExit(state)
+            state.enteredAt = Time()
             running = false
             Scheduler.remove(this)
         }
 
         return result
     }
-}
 
-fun statelessCommand(name: String = "Unnamed Command"): Command<CommandState> {
-    return Command(CommandState.default(name))
+    companion object {
+        fun create(name: String = "Unnamed Command", interval: Time? = null): Command<BaseCommandState> {
+            return Command(BaseCommandState(name), interval)
+        }
+
+        fun <T: BaseCommandState> create(state: T, interval: Time? = null): Command<T> {
+            return Command(state, interval)
+        }
+
+        fun create(name: String = "Unnamed Command", interval: Time? = null, block: Command<BaseCommandState>.() -> Unit = {}): Command<BaseCommandState> {
+            return Command(BaseCommandState(name), interval)
+        }
+
+        fun <T: BaseCommandState> create(state: T, interval: Time? = null, block: Command<T>.() -> Unit = {}): Command<T> {
+            return Command(state, interval)
+        }
+
+        fun continuous(name: String = "Unnamed Command", interval: Time? = null, action: (BaseCommandState) -> Unit): Command<BaseCommandState> {
+            return Command(BaseCommandState(name), interval).setAction { action(it); false }
+        }
+
+        fun <T: BaseCommandState> continuous(state: T, interval: Time? = null, action: (T) -> Unit): Command<T> {
+            return Command(state, interval).setAction { action(it); false }
+        }
+    }
 }

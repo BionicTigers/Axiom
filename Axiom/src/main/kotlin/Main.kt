@@ -1,82 +1,12 @@
 package io.github.bionictigers
 
-import io.github.bionictigers.axiom.commands.Command
+import com.qualcomm.robotcore.hardware.DcMotorEx
 import io.github.bionictigers.axiom.commands.Scheduler
-import io.github.bionictigers.axiom.commands.CommandState
-import io.github.bionictigers.axiom.web.Editable
-import io.github.bionictigers.axiom.web.Hidden
-//import io.github.bionictigers.web.WebServer
-import kotlin.concurrent.fixedRateTimer
-import kotlin.math.cbrt
-import kotlin.math.sin
-import kotlin.math.sqrt
-import com.qualcomm.robotcore.hardware.Gamepad as FTCGamepad
-
-interface ArmCommand : CommandState {
-    @Hidden
-    var ticks: Double
-    @Editable
-    var setPoint: Pose
-
-    companion object {
-        fun default(): ArmCommand {
-            return object : ArmCommand, CommandState by CommandState.default("Arm") {
-                override var ticks = 0.0
-                override var setPoint = Pose(100, 0, 50)
-            }
-        }
-    }
-}
-
-interface PivotCommand : CommandState {
-    var ticks: Int
-    var setPoint: Int
-    var setPoint2: Int
-    var setPoint3: Int
-    var setPoint4: Int
-
-    companion object {
-        fun default(): PivotCommand {
-            return object : PivotCommand, CommandState by CommandState.default("Pivot") {
-                override var ticks = 0
-                override var setPoint = 2000
-                override var setPoint2 = 2000
-                override var setPoint3 = 2000
-                override var setPoint4 = 2000
-            }
-        }
-    }
-}
+import io.github.bionictigers.axiom.web.Server
 
 fun main() {
-//    val (gp1, gp2) = Pair(FTCGamepad(), FTCGamepad())
-
-//    val gamepadSystem = GamepadSystem(gp1, gp2)
-    val command = Command(ArmCommand.default())
-        .setAction {
-            it.ticks += sin(it.timeInScheduler.seconds())
-            false
-        }
-
-    val otherCommand = Command(PivotCommand.default())
-        .setAction {
-//            it.ticks += (sqrt((it.setPoint - it.ticks).toDouble()) * it.deltaTime.seconds()).toInt()
-            false
-        }
-//    Scheduler.addSystem(gamepadSystem)
-    Scheduler.add(command, otherCommand)
-//    val (g1, g2) = gamepadSystem.gamepads
-
-//    g1.getBooleanButton(Gamepad.Buttons.A).onDown {
-//        println("down")
-//    }
-
-    //test code
-//    fixedRateTimer(period = 500) {
-//        gp1.a = !gp1.a
-//    }
-
-//    generateMotionProfile(100.0, 200.0, 400.0, 2000.0, 1000.0, 5000.0)
+    Scheduler.addSystem(Slides(DcMotorEx()))
+    Server.start()
 
     while (true) {
         Scheduler.update()

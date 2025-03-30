@@ -17,29 +17,30 @@
     name: string;
     state: { [key: string]: InputType };
     hash: number;
+    type: "Command" | "System";
   };
 
   let drivetrainPowers: number[] | undefined = $state(undefined);
 
   let commands = $state<CommandData[]>([]);
-  let teleops = $state<String[]>([]);
-  let autos = $state<String[]>([]);
+  let teleops = $state<string[]>([]);
+  let autos = $state<string[]>([]);
 
   let selectedOpMode = $state("NONE");
   // Selected, Init, Running
   let opModeState = $state("Selected");
 
-  let telemetry = $state<String[]>([])
+  const telemetry = $state<string[]>([]);
 
   Websocket.on("cycle", (data) => {
     drivetrainPowers = data.drivetrain;
 
     // Handle command updates
-    let newCommands: CommandData[] = [];
+    const newCommands: CommandData[] = [];
 
-    for (let command of data.commands as CommandJson[]) {
+    for (const command of data.commands as CommandJson[]) {
       newCommands.push(
-        new CommandData(command.name, command.state, command.hash)
+        new CommandData(command.name, command.state, command.hash, command.type)
       );
     }
 
@@ -58,7 +59,7 @@
 
   onMount(() => {
     Websocket.create();
-    let heartbeatInterval = setInterval(() => {
+    const heartbeatInterval = setInterval(() => {
       if (get(Websocket.state) === Websocket.State.Connected) {
         Websocket.Functions.ping();
       }
@@ -69,7 +70,7 @@
     };
   });
 
-  let WebsocketState = Websocket.state;
+  const WebsocketState = Websocket.state;
 
   let gamepadData = $state(new GamepadData());
 
@@ -79,7 +80,7 @@
 
   let leftSideSelected = $state("FIELD");
 
-  let closeModal = () => {
+  const closeModal = () => {
     isPaused = false;
     graphModal = false;
     opModeModal = false;
@@ -261,6 +262,7 @@
               name={command.name}
               state={command.state}
               hash={command.hash}
+              type={command.type}
             />
           {/each}
         </System>

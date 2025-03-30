@@ -28,6 +28,11 @@ sealed class IncomingMessage {
     ) : IncomingMessage()
 }
 
+enum class ObjectType {
+    Command,
+    System
+}
+
 object Server {
     // Keep track of active WebSocket connections
     private val connections = mutableListOf<UpdatesWebSocket>()

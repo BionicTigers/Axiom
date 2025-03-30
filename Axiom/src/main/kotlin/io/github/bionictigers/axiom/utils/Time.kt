@@ -53,6 +53,10 @@ data class Time internal constructor(@Display private val time: Double = 0.0) {
         else if (diff > 0.0) 1
         else -1
     }
+
+    override fun toString(): String {
+        return "${time}s"
+    }
 }
 
 fun max(vararg times: Time): Time = times.maxBy { it.seconds() }

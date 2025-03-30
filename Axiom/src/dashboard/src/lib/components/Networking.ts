@@ -57,8 +57,8 @@ export namespace Websocket {
 
 function createWebsocket() {
     if (socket) Websocket.close()
-    // socket = new WebSocket("ws://localhost:10464/")
-    socket = new WebSocket("ws://192.168.43.1:10464/")
+    socket = new WebSocket("ws://localhost:10464/")
+//     socket = new WebSocket("ws://192.168.43.1:10464/")
     let liveSocket = socket
 
     Websocket.state.set(Websocket.State.Connecting)

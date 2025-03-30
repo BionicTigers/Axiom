@@ -6,15 +6,18 @@
     name: string;
     hash: number;
     state: { [key: string]: InputType };
-
+    type: "Command" | "System";
+    
     constructor(
       name: string,
       state: { [key: string]: InputType },
-      hash: number
+      hash: number,
+      type: "Command" | "System"
     ) {
       this.name = name;
       this.hash = hash;
       this.state = state;
+      this.type = type;
     }
   }
 
@@ -37,7 +40,7 @@
   import State from "../components/State.svelte";
   import { generateGradient, rgbToString } from "../utils/Color";
 
-  let { name, state, hash }: { name: string; state: { [key: string]: InputType }; hash: number } = $props();
+  let { name, state, hash, type }: { name: string; state: { [key: string]: InputType }; hash: number; type: "Command" | "System" } = $props();
 
   let rightSide = $derived(state.deltaTime as unknown as number * 1000)
   let rightSideColor = $derived(rgbToString(generateGradient([{color: {r: 255, g: 0, b: 0}, position: 20}, {color: {r: 0, g: 255, b: 0}, position: 0}], rightSide)))
@@ -46,6 +49,6 @@
 
 <SelectorTab {name} {rightSideColor} rightSide={rightSideString} overflowHeight="20rem">
   {#each Object.entries(filterInternalValues(state)) as [key, value]}
-    <State {key} {value} path={hash + "." + key} />
+    <State {key} {value} path={type + "." + hash + "." + key} />
   {/each}
 </SelectorTab>
