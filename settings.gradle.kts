@@ -19,8 +19,8 @@ plugins {
 }
 
 include(":MockFTC")
-include(":Axiom")
 project(":MockFTC").projectDir = file("MockFTC")
-project(":Axiom").projectDir = file("Axiom")
 
 rootProject.name = "axiom"
+include(":core")
+include(":Core")
