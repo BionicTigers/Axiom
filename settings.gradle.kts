@@ -4,6 +4,11 @@ pluginManagement {
         google()
         mavenCentral()
     }
+    plugins {
+        id("com.android.application") version "8.5.2"
+        id("com.android.library") version "8.5.2"
+        id("org.jetbrains.kotlin.android") version "2.2.0"
+    }
 }
 
 dependencyResolutionManagement {
@@ -14,13 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-plugins {
-    id("org.gradle.toolchains.foojay-resolver-convention") version "0.5.0"
-}
-
-include(":MockFTC")
-project(":MockFTC").projectDir = file("MockFTC")
-
 rootProject.name = "axiom"
-include(":core")
-include(":Core")
+include(":MockFTC", ":core")
+project(":MockFTC").projectDir = file("MockFTC")

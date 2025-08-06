@@ -4,6 +4,9 @@
   --ev-c-white-mute: #f2f2f2;
 
   --ev-c-black: #1b1b1f;
+  --ev-c-black-2: rgb(29, 29, 42);
+  --ev-c-black-2-soft: rgb(46, 46, 74);
+  --ev-c-black-2-mute: rgb(66, 66, 94);
   --ev-c-black-soft: #222222;
   --ev-c-black-mute: #282828;
 
@@ -15,6 +18,16 @@
   --ev-c-text-2: rgba(235, 235, 245, 0.6);
   --ev-c-text-3: rgba(235, 235, 245, 0.38);
 
+  --ev-c-red: #ff7676;
+  --ev-c-red-soft: #ff9999;
+  --ev-c-green: #76ff76;
+  --ev-c-green-soft: #99ff99;
+  --ev-c-blue: #7676ff;
+  --ev-c-yellow: #ffd676;
+  --ev-c-purple: #d676ff;
+  --ev-c-orange: #ff9976;
+  --ev-c-pink: #ff7699;
+
   --ev-button-alt-border: transparent;
   --ev-button-alt-text: var(--ev-c-text-1);
   --ev-button-alt-bg: var(--ev-c-gray-3);
@@ -25,6 +38,7 @@
 
 :root {
   --color-background: var(--ev-c-black);
+  --color-background-2: var(--ev-c-black-2);
   --color-background-soft: var(--ev-c-black-soft);
   --color-background-mute: var(--ev-c-black-mute);
 
@@ -46,7 +60,7 @@ ul {
 body {
   min-height: 100vh;
   color: var(--color-text);
-  background: var(--color-background);
+  background: linear-gradient(to bottom, var(--color-background), var(--color-background-2));
   line-height: 1.6;
   font-family:
     Inter,

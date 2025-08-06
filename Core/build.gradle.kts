@@ -1,43 +1,75 @@
 plugins {
+//    id("com.android.application")
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
 }
 
-android {
-    namespace = "io.github.bionictigers.core"
-    compileSdk = 34
-
-    defaultConfig {
-        minSdk = 24
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles("consumer-rules.pro")
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-    kotlinOptions {
-        jvmTarget = "11"
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
 }
 
-dependencies {
+kotlin {
+    jvmToolchain(17)
+    jvmToolchain {
+        this.languageVersion.set(JavaLanguageVersion.of(17))
+    }
+}
 
-    implementation("androidx.core:core-ktx:1.16.0")
-    implementation("androidx.appcompat:appcompat:1.7.1")
-    implementation("com.google.android.material:material:1.12.0")
-    testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+android {
+    namespace = "io.github.bionictigers"
+    compileSdk = 34
+
+    flavorDimensions += "environment"
+
+    productFlavors {
+        create("mock") {
+            dimension = "environment"
+        }
+        create("prod") {
+            dimension = "environment"
+        }
+    }
+
+    // Configure test options
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+}
+
+val ftcVersion = "10.2.0"
+
+dependencies {
+    mockImplementation(project(":MockFTC"))
+    mockImplementation("org.nanohttpd:nanohttpd-websocket:2.3.1")
+
+    prodImplementation("org.firstinspires.ftc:Blocks:$ftcVersion")
+    prodImplementation("org.firstinspires.ftc:RobotCore:$ftcVersion")
+    prodImplementation("org.firstinspires.ftc:RobotServer:$ftcVersion")
+    prodImplementation("org.firstinspires.ftc:OnBotJava:$ftcVersion")
+    prodImplementation("org.firstinspires.ftc:Hardware:$ftcVersion")
+    prodImplementation("org.firstinspires.ftc:FtcCommon:$ftcVersion")
+    prodImplementation("org.firstinspires.ftc:Vision:$ftcVersion")
+    add("prodImplementation", "org.nanohttpd:nanohttpd-websocket:2.3.1") {
+        exclude(group = "org.nanohttpd", module = "nanohttpd")
+    }
+
+    implementation("com.squareup.moshi:moshi:1.14.0")
+    implementation("com.squareup.moshi:moshi-kotlin:1.14.0")
+    implementation("com.squareup.moshi:moshi-adapters:1.14.0")
+
+    implementation(kotlin("reflect"))
+}
+
+private fun DependencyHandlerScope.mockImplementation(dependency: ProjectDependency) {
+    add("mockImplementation", dependency)
+}
+
+private fun DependencyHandlerScope.mockImplementation(dependency: String) {
+    add("mockImplementation", dependency)
+}
+
+private fun DependencyHandlerScope.prodImplementation(dependency: String) {
+    add("prodImplementation", dependency)
 }

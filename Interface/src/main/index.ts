@@ -1,7 +1,8 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'path'
-import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.png?asset'
+import { electronApp, is, optimizer } from '@electron-toolkit/utils';
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { join } from 'path';
+
+import icon from '../../resources/icon.png?asset';
 
 function createWindow(): void {
   // Create the browser window.
@@ -51,6 +52,22 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+
+  // Axiom connection handlers
+  ipcMain.on('axiom-connected', (event) => {
+    console.log('Main: Axiom connected')
+    event.sender.send('axiom-connected')
+  })
+
+  ipcMain.on('axiom-disconnected', (event) => {
+    console.log('Main: Axiom disconnected')
+    event.sender.send('axiom-disconnected')
+  })
+
+  ipcMain.on('axiom-data', (event, data) => {
+    console.log('Main: Axiom data received', data)
+    event.sender.send('axiom-data', data)
+  })
 
   createWindow()
 
