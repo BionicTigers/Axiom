@@ -9,12 +9,14 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import io.github.bionictigers.axiom.core.commands.Scheduler
 import fi.iki.elonen.NanoWSD
 import fi.iki.elonen.NanoHTTPD.IHTTPSession
-import fi.iki.elonen.NanoHTTPD.Response
 import fi.iki.elonen.NanoHTTPD.Response.Status
 import fi.iki.elonen.NanoWSD.WebSocket
 import fi.iki.elonen.NanoWSD.WebSocketFrame
 import fi.iki.elonen.NanoWSD.WebSocketFrame.CloseCode
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.MainScope
 import java.io.IOException
+import kotlin.concurrent.fixedRateTimer
 
 @JsonClass(generateAdapter = true)
 sealed class IncomingMessage {
@@ -28,14 +30,16 @@ sealed class IncomingMessage {
     ) : IncomingMessage()
 }
 
-enum class ObjectType {
-    Command,
-    System
+interface Serializable {
+    fun serialize(tick: Long): Map<String, Any?>
 }
 
 object Server {
     // Keep track of active WebSocket connections
     private val connections = mutableListOf<UpdatesWebSocket>()
+//    private val scope = MainScope()
+
+    private val newConnectionCallbacks: List<((Serializable) -> Unit) -> Unit> = mutableListOf()
 
     // Moshi instance configured with the Kotlin adapter
     private val moshi: Moshi = Moshi.Builder()
@@ -66,32 +70,26 @@ object Server {
         }
         server.start()
         RobotLog.dd("Axiom", "NanoWSD server started on port 10464")
-
-        // Background thread to periodically broadcast updates from Scheduler
-        Thread {
-            while (true) {
-                Thread.sleep(100)  // simulate periodic updates
-                val updates = serialize()
-                val updateJson = try {
-                    anyAdapter.toJson(updates)
-                } catch (e: Exception) {
-                    RobotLog.dd("Axiom", "Serialization error: ${e.message}")
-                    "{}"
-                }
-                synchronized(connections) {
-                    connections.forEach { ws ->
-                        ws.sendSafe(updateJson)
-                    }
-                }
-            }
-        }.start()
     }
 
-    private fun serialize(): Map<String, Any?> {
-        return mapOf(
-            "type" to "scheduler_update",
-            "data" to Scheduler.serialize(),
-        )
+    internal fun send(data: Serializable) {
+        val update = data.serialize(Scheduler.tick)
+        val updateJson = try {
+            anyAdapter.toJson(update)
+        } catch (e: Exception) {
+            RobotLog.dd("Axiom", "Serialization error: ${e.message}")
+            "{}"
+        }
+
+        synchronized(connections) {
+            connections.forEach { ws ->
+                ws.sendSafe(updateJson)
+            }
+        }
+    }
+
+    fun onNewConnection(callback: ((data: Serializable) -> Unit) -> Unit) {
+        (newConnectionCallbacks as MutableList).add(callback)
     }
 
     // Custom WebSocket subclass for handling connect/close/message events
@@ -100,6 +98,22 @@ object Server {
             RobotLog.dd("Axiom", "Client connected: ${handshakeRequest.remoteIpAddress}")
             synchronized(connections) {
                 connections.add(this)
+                newConnectionCallbacks.forEach {
+                    it { data ->
+                        sendSafe(
+                            anyAdapter.toJson(data.serialize(Scheduler.tick))
+                        )
+                    }
+                }
+            }
+
+            fixedRateTimer("KeepAlive", true, 0L, 2500L) {
+                try {
+                    this@UpdatesWebSocket.ping(ByteArray(0))
+                } catch (e: IOException) {
+                    RobotLog.ww("Axiom", "Failed to send ping: ${e.message}")
+                    this.cancel()
+                }
             }
         }
 
@@ -119,7 +133,7 @@ object Server {
                 val clientMsg = it.textPayload
                 RobotLog.dd("Axiom", "Received from client: $clientMsg")
 
-                if (clientMsg == "ping") return
+                if (clientMsg == "pong") return
 
                 try {
                     when (val msg = messageAdapter.fromJson(clientMsg)) {
@@ -139,10 +153,7 @@ object Server {
             }
         }
 
-        override fun onPong(pong: WebSocketFrame?) {
-            // Log pong responses, if needed.
-            RobotLog.dd("Axiom", "Received pong from ${handshakeRequest.remoteIpAddress}")
-        }
+        override fun onPong(pong: WebSocketFrame?) {}
 
         override fun onException(exception: IOException?) {
             RobotLog.ww("Axiom", "WebSocket Exception: ${exception?.message}")

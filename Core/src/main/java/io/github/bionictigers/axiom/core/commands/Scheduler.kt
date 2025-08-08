@@ -4,12 +4,18 @@ import com.qualcomm.robotcore.util.RobotLog
 import io.github.bionictigers.axiom.core.commands.Scheduler.getPersistentState
 import io.github.bionictigers.axiom.core.commands.Scheduler.persistentStates
 import io.github.bionictigers.axiom.core.web.Editable
-import io.github.bionictigers.axiom.core.web.Hidden
-import io.github.bionictigers.axiom.core.web.ObjectType
 import io.github.bionictigers.axiom.core.web.Value
-import io.github.bionictigers.io.github.bionictigers.axiom.core.utils.convertTo
-import io.github.bionictigers.io.github.bionictigers.axiom.core.utils.hasAnnotationOnProperty
-import io.github.bionictigers.io.github.bionictigers.axiom.core.web.Display
+import io.github.bionictigers.axiom.core.utils.convertTo
+import io.github.bionictigers.axiom.core.utils.getAnnotationOnProperty
+import io.github.bionictigers.axiom.core.utils.hasAnnotationOnProperty
+import io.github.bionictigers.axiom.core.web.Display
+import io.github.bionictigers.axiom.core.web.Hidden
+import io.github.bionictigers.axiom.core.web.Server
+import io.github.bionictigers.axiom.core.web.serializable.ObjectType
+import io.github.bionictigers.axiom.core.web.serializable.Schedulable
+import io.github.bionictigers.axiom.core.web.serializable.SchedulablesInitial
+import io.github.bionictigers.axiom.core.web.serializable.SchedulablesUpdate
+import io.github.bionictigers.axiom.core.web.serializable.StateUpdate
 import org.firstinspires.ftc.robotcore.external.Telemetry
 import java.lang.reflect.Field
 import java.util.*
@@ -25,15 +31,19 @@ import kotlin.time.measureTime
 typealias GenericCommand = Command<out BaseCommandState>
 
 object Scheduler {
-    private val commands = ConcurrentHashMap<Int, GenericCommand>()
+    private val commands = ConcurrentHashMap<String, GenericCommand>()
     private val sortedCommands = ArrayList<GenericCommand>()
 
-    private val systems = ConcurrentHashMap<Int, System>()
+    private val commandSnapshots: ConcurrentHashMap<String, Schedulable> = ConcurrentHashMap()
+
+    private val systems = ConcurrentHashMap<String, System>()
 //    private val systemsToCommands = ConcurrentHashMap<Int, Int>()
 
     private val addQueue: ConcurrentLinkedQueue<GenericCommand> = ConcurrentLinkedQueue()
     private val removeQueue: ConcurrentLinkedQueue<GenericCommand> = ConcurrentLinkedQueue()
     private val editQueue: ConcurrentLinkedQueue<Pair<String, Any>> = ConcurrentLinkedQueue()
+
+    var tick = 0L
 
     val persistentStates = ConcurrentHashMap<String, BaseCommandState>()
 
@@ -44,9 +54,11 @@ object Scheduler {
 
     var loopDeltaTime = Duration.ZERO
 
-//    init {
-//        Server.start()
-//    }
+    init {
+        Server.onNewConnection { send ->
+            send(SchedulablesInitial(serialize()) )
+        }
+    }
 
     /**
      * Adds commands to the scheduler.
@@ -75,10 +87,13 @@ object Scheduler {
      * @see System
      */
     fun schedule(vararg systems: System) {
-        schedule(systems.mapNotNull { it.beforeRun })
-        schedule(systems.mapNotNull { it.afterRun })
+        schedule(systems.flatMap {
+            it.beforeRun?.parent = it
+            it.afterRun?.parent = it
+            listOfNotNull(it.beforeRun, it.afterRun)
+        })
         systems.forEach {
-            Scheduler.systems[it.hashCode()] = it
+            Scheduler.systems[it.id] = it
         }
     }
 
@@ -115,9 +130,9 @@ object Scheduler {
         val map = HashMap<String, Any>()
 
         (cmdState::class.java.declaredFields + cmdState::class.java.superclass.declaredFields).forEach {
-            val isHidden = hasAnnotationOnProperty<Hidden>(cmdState, it.name)
+            val hiddenAnnotation = getAnnotationOnProperty<Hidden>(cmdState, it.name)
             val isEditable = hasAnnotationOnProperty<Editable>(cmdState, it.name)
-            if (it.isSynthetic || it.name == "name" || isHidden) return@forEach
+            if (it.isSynthetic || it.name == "name" || (hiddenAnnotation != null && hiddenAnnotation.exclude)) return@forEach
             it.isAccessible = true
             try {
                 val value = it.get(cmdState)?.let { it1 -> serializeVariable(it1, !isEditable) }
@@ -130,13 +145,25 @@ object Scheduler {
         return map.ifEmpty { null }
     }
 
-    fun serialize(): ArrayList<Map<String, Any>> {
-        val array = ArrayList<Map<String, Any>>()
-        commands.values.forEach {
-            array += mapOf("name" to it.name, "hash" to it.hashCode(), "state" to (serializeState(it.state) ?: mapOf()), "type" to ObjectType.Command)
+    fun serialize(): ArrayList<Schedulable> {
+        val array = ArrayList<Schedulable>()
+        array += commands.values.map {
+            Schedulable(
+                it.name,
+                it.id,
+                serializeState(it.state) ?: mapOf(),
+                it.parent?.id,
+                ObjectType.Command
+            )
         }
-        systems.values.forEach {
-            array += mapOf("name" to it.name, "hash" to it.hashCode(), "state" to (serializeState(it) ?: mapOf()), "type" to ObjectType.System)
+        array += systems.values.map {
+            Schedulable(
+                it.name,
+                it.id,
+                serializeState(it) ?: mapOf(),
+                null,
+                ObjectType.System
+            )
         }
 
         return array
@@ -144,7 +171,7 @@ object Scheduler {
 
     private fun internalAdd(command: GenericCommand) {
         changed = true
-        commands[command.hashCode()] = command
+        commands[command.id] = command
         command.internalEnter()
     }
 
@@ -168,7 +195,7 @@ object Scheduler {
 
     private fun internalRemove(command: GenericCommand) {
         changed = true
-        commands.remove(command.hashCode())
+        commands.remove(command.id)
         command.dependencies.forEach { dep ->
             if (dep !in commands.values) {
                 return
@@ -218,7 +245,7 @@ object Scheduler {
         val (path, value) = edit
         val splitPath = path.split(".")
         val type = if (splitPath[0] == "Command") commands else systems
-        val command = type[splitPath[1].toInt()] ?: return
+        val command = type[splitPath[1]] ?: return
 
         //Unsafe magic!
         var index = 2
@@ -242,6 +269,69 @@ object Scheduler {
         } catch(e: IllegalArgumentException) {
             RobotLog.ww("Axiom", "Unable to set $path to $value as they do not share a type.")
         }
+    }
+
+    /**
+     * Calculates the list of schedulables that have changed (excluding the state) since the last update.
+     */
+    private fun calculateSchedulableDeltas(): Pair<List<Schedulable>, Set<String>> {
+        val deltas = mutableListOf<Schedulable>()
+        val current = serialize()
+
+        current.forEach { schedulable ->
+            val id = schedulable.id
+            val previous = commandSnapshots[id]
+            if (previous == null) {
+                // New command/system, no delta to report
+                deltas += schedulable
+            } else {
+                if (previous.name != schedulable.name ||
+                    previous.parent != schedulable.parent ||
+                    previous.type != schedulable.type) {
+                    deltas += schedulable
+                }
+            }
+        }
+
+        val removals = commandSnapshots.keys.subtract(current.map { it.id })
+        removals.forEach { commandSnapshots.remove(it) }
+
+        return Pair(deltas, removals)
+    }
+
+    private fun calculateStateDelta(): List<Pair<String, Map<String, Any?>>> {
+        //Use a list instead of a map to preserve order
+        val deltas = mutableListOf<Pair<String, Map<String, Any?>>>()
+        val current = serialize()
+
+        current.forEach { schedulable ->
+            val id = schedulable.id
+            val previous = commandSnapshots[id]
+            if (previous == null) {
+                // New command/system, no delta to report
+                deltas += id to schedulable.state
+            } else {
+                val currentState = schedulable.state
+                val diff = mutableMapOf<String, Any?>()
+                currentState.forEach { (key, value) ->
+                    if (previous.state[key] != value) {
+                        diff[key] = value
+                    }
+                }
+
+                previous.state.keys.subtract(currentState.keys).forEach {
+                    diff[it] = null
+                }
+
+                if (diff.isNotEmpty()) {
+                    deltas += id to diff
+                }
+            }
+
+            commandSnapshots[id] = schedulable
+        }
+
+        return deltas
     }
 
     /**
@@ -272,6 +362,17 @@ object Scheduler {
             telemetry!!.addData("Scheduler Loop Time", loopDeltaTime)
         }
 
+        val (schedulableDeltas, removalDeltas) = calculateSchedulableDeltas()
+        if (schedulableDeltas.isNotEmpty() || removalDeltas.isNotEmpty()) {
+            Server.send(SchedulablesUpdate(schedulableDeltas, removalDeltas))
+        }
+
+        val stateDeltas = calculateStateDelta()
+        if (stateDeltas.isNotEmpty()) {
+            Server.send(StateUpdate(stateDeltas))
+        }
+
+        tick++
         inUpdateCycle = false
     }
 

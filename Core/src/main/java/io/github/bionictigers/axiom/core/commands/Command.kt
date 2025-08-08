@@ -1,5 +1,6 @@
 package io.github.bionictigers.axiom.core.commands
 
+import java.util.UUID
 import kotlin.time.Duration
 import kotlin.time.TimeSource
 
@@ -17,9 +18,11 @@ typealias BaseCommand = Command<BaseCommandState>
 open class Command<T: BaseCommandState> internal constructor(
     val name: String = "Unnamed Command",
     val state: T,
-    private val interval: Duration? = null
+    private val interval: Duration? = null,
+    internal var parent: System? = null
 ) {
     val dependencies = ArrayList<Command<out BaseCommandState>>()
+    val id = UUID.randomUUID().toString()
 
     private var predicate: (T) -> Boolean = { true }
     private var action: (T) -> Boolean = { false }

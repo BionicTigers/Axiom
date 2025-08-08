@@ -1,4 +1,4 @@
-package io.github.bionictigers.io.github.bionictigers.axiom.core.utils
+package io.github.bionictigers.axiom.core.utils
 
 import kotlin.reflect.KClass
 import kotlin.reflect.full.memberProperties

@@ -1,5 +1,7 @@
 package io.github.bionictigers.axiom.core.commands
 
+import java.util.UUID
+
 /**
  * A system is the base class for all systems/mechanisms.
  * Examples include Gamepad, Drivetrain, and Intake.
@@ -9,14 +11,12 @@ package io.github.bionictigers.axiom.core.commands
  * @see Scheduler
  * @see Command
  */
-interface System {
-    val name: String
+abstract class System {
+    abstract val name: String
+    val id: String = UUID.randomUUID().toString()
 
-    val dependencies: List<System>?
-        get() = emptyList()
+    val dependencies: List<System> = emptyList()
 
-    val beforeRun: Command<out BaseCommandState>?
-        get() = null
-    val afterRun: Command<out BaseCommandState>?
-        get() = null
+    val beforeRun: Command<out BaseCommandState>? = null
+    val afterRun: Command<out BaseCommandState>? = null
 }
