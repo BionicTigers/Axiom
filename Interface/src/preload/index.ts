@@ -26,6 +26,8 @@ ws.on('message', (data) => {
   }
 })
 
+ws.start()
+
 const axiomAPI = {
   isConnected: () => ws.isConnected,
   onData: (callback: (data: unknown) => void) => {

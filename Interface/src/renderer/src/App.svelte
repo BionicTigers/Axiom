@@ -7,11 +7,15 @@
   let isConnected = $state(false)
 
   onMount(() => {
+    isConnected = window.axiomAPI.isConnected()
+
     window.electron.ipcRenderer.on('axiom-connected', () => {
+      console.log('Renderer: Axiom connected')
       isConnected = true
     })
 
     window.electron.ipcRenderer.on('axiom-disconnected', () => {
+      console.log('Renderer: Axiom disconnected')
       isConnected = false
     })
   })

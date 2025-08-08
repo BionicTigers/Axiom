@@ -16,6 +16,7 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.collections.ArrayList
+import kotlin.collections.set
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 import kotlin.time.Duration
@@ -62,6 +63,22 @@ object Scheduler {
             command.forEach {
                 internalAdd(it)
             }
+        }
+    }
+
+    /**
+     * Adds systems to the scheduler.
+     *
+     * This is a convenience method that adds the beforeRun and afterRun commands of the system.
+     *
+     * @param system The systems to add.
+     * @see System
+     */
+    fun schedule(vararg systems: System) {
+        schedule(systems.mapNotNull { it.beforeRun })
+        schedule(systems.mapNotNull { it.afterRun })
+        systems.forEach {
+            Scheduler.systems[it.hashCode()] = it
         }
     }
 
@@ -129,22 +146,6 @@ object Scheduler {
         changed = true
         commands[command.hashCode()] = command
         command.internalEnter()
-    }
-
-    /**
-     * Adds systems to the scheduler.
-     *
-     * This is a convenience method that adds the beforeRun and afterRun commands of the system.
-     *
-     * @param system The systems to add.
-     * @see System
-     */
-    fun addSystem(vararg system: System) {
-        schedule(system.mapNotNull { it.beforeRun })
-        schedule(system.mapNotNull { it.afterRun })
-        system.forEach {
-            systems[it.hashCode()] = it
-        }
     }
 
     /**

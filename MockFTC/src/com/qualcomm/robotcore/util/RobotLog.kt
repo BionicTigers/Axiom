@@ -28,6 +28,7 @@ class RobotLog {
             }
             // Prefix the log message with the tag (as in Android)
             logger.log(level, "[$tag] $message")
+            println("[$tag] $message")
         }
 
         private fun internalLog(priority: Int, tag: String, throwable: Throwable, message: String) {
