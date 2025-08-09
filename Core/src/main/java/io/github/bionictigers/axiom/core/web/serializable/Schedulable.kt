@@ -25,7 +25,7 @@ internal data class SchedulablesInitial(
             "data" to objects.map { obj ->
                 mapOf(
                     "name" to obj.name,
-                    "hash" to obj.id,
+                    "id" to obj.id,
                     "state" to obj.state,
                     "parent" to obj.parent,
                     "type" to obj.type.name,
@@ -44,10 +44,9 @@ internal data class SchedulablesUpdate(
             "name" to "schedulable_update",
             "tick" to tick,
             "data" to mapOf(
-                "updated" to objects.map { obj ->
-                    mapOf(
+                "updated" to objects.associate { obj ->
+                    obj.id to mapOf(
                         "name" to obj.name,
-                        "id" to obj.id,
                         "parent" to obj.parent,
                         "type" to obj.type.name,
                         // state is sent in StateUpdate

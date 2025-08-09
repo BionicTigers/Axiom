@@ -1,6 +1,6 @@
 {
   "name": "interface",
-  "version": "1.0.0",
+  "version": "dev-1",
   "description": "An Electron application with Svelte and TypeScript",
   "main": "./out/main/index.js",
   "author": "example.com",

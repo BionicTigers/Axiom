@@ -2,7 +2,10 @@ import { electronApp, is, optimizer } from '@electron-toolkit/utils';
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { join } from 'path';
 
-import icon from '../../resources/icon.png?asset';
+import icon from '../../resources/icon.ico?asset';
+import iconOther from '../../resources/icon.png?asset';
+
+const verison = app.getVersion()
 
 function createWindow(): void {
   // Create the browser window.
@@ -10,8 +13,10 @@ function createWindow(): void {
     width: 900,
     height: 670,
     show: false,
+    icon: icon,
+    title: `Seek (${verison})`,
     autoHideMenuBar: true,
-    ...(process.platform === 'linux' ? { icon } : {}),
+    ...(process.platform !== 'win32' ? { icon: iconOther } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false

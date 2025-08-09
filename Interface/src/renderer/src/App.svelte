@@ -3,6 +3,9 @@
   import Status from './components/Status.svelte'
   import AnimatedSearch from './components/AnimatedSearch.svelte'
   import { onMount } from 'svelte'
+  import type { BaseResponse } from './lib/types'
+  import { getNetworkEvent } from './lib/networkRegistry'
+  import { schedulableStore } from './lib/stores/schedulableStore'
 
   let isConnected = $state(false)
 
@@ -14,6 +17,17 @@
       isConnected = true
     })
 
+    window.electron.ipcRenderer.on('axiom-data', (_, jsonData: BaseResponse<any>) => {
+      const { name, tick, data } = jsonData
+      const callback = getNetworkEvent(name)
+      console.log('Renderer: Axiom event', name)
+      if (callback) {
+        callback(data, tick)
+      } else {
+        console.warn(`Renderer: No callback registered for event ${name}`)
+      }
+    })
+
     window.electron.ipcRenderer.on('axiom-disconnected', () => {
       console.log('Renderer: Axiom disconnected')
       isConnected = false
@@ -21,8 +35,6 @@
   })
 
   let latency = $state(1)
-
-  // const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
 </script>
 
 <AnimatedSearch isSearching={!isConnected} />

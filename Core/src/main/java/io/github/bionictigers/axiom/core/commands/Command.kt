@@ -151,6 +151,16 @@ open class Command<T: BaseCommandState> internal constructor(
         running = false
     }
 
+    fun copy(name: String? = null, state: T? = null): Command<T> {
+        val newCommand = Command(name ?: this.name, state ?: this.state, interval, parent)
+        newCommand.predicate = predicate
+        newCommand.action = action
+        newCommand.onEnter = onEnter
+        newCommand.onExit = onExit
+        newCommand.dependencies.addAll(dependencies)
+        return newCommand
+    }
+
     companion object {
         fun create(name: String = "Unnamed Command", interval: Duration? = null, block: BaseCommand.() -> Unit = {}): BaseCommand {
             return create(name, BaseCommandState(), interval, block)

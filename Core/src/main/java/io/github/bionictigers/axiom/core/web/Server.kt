@@ -14,8 +14,16 @@ import fi.iki.elonen.NanoWSD.WebSocket
 import fi.iki.elonen.NanoWSD.WebSocketFrame
 import fi.iki.elonen.NanoWSD.WebSocketFrame.CloseCode
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.io.IOException
+import java.util.Timer
 import kotlin.concurrent.fixedRateTimer
 
 @JsonClass(generateAdapter = true)
@@ -37,7 +45,6 @@ interface Serializable {
 object Server {
     // Keep track of active WebSocket connections
     private val connections = mutableListOf<UpdatesWebSocket>()
-//    private val scope = MainScope()
 
     private val newConnectionCallbacks: List<((Serializable) -> Unit) -> Unit> = mutableListOf()
 
@@ -81,6 +88,7 @@ object Server {
             "{}"
         }
 
+
         synchronized(connections) {
             connections.forEach { ws ->
                 ws.sendSafe(updateJson)
@@ -94,6 +102,12 @@ object Server {
 
     // Custom WebSocket subclass for handling connect/close/message events
     private class UpdatesWebSocket(handshakeRequest: IHTTPSession) : WebSocket(handshakeRequest) {
+        private val job = SupervisorJob()
+        private val serverScope = CoroutineScope(job + Dispatchers.IO)
+        private var keepAlive: Timer? = null
+
+        private val outMessages = Channel<String>(capacity = 64)
+
         override fun onOpen() {
             RobotLog.dd("Axiom", "Client connected: ${handshakeRequest.remoteIpAddress}")
             synchronized(connections) {
@@ -107,12 +121,16 @@ object Server {
                 }
             }
 
-            fixedRateTimer("KeepAlive", true, 0L, 2500L) {
-                try {
-                    this@UpdatesWebSocket.ping(ByteArray(0))
-                } catch (e: IOException) {
-                    RobotLog.ww("Axiom", "Failed to send ping: ${e.message}")
-                    this.cancel()
+            serverScope.launch {
+                outMessages.consumeEach {
+                    sendSafe(it)
+                }
+            }
+
+            serverScope.launch {
+                while (isActive) {
+                    try { ping(ByteArray(0)) } catch (_: IOException) { break }
+                    delay(2500)
                 }
             }
         }
@@ -123,34 +141,49 @@ object Server {
             initiatedByRemote: Boolean
         ) {
             RobotLog.dd("Axiom", "Client disconnected: ${handshakeRequest.remoteIpAddress} (code=$code, reason=$reason)")
+
             synchronized(connections) {
                 connections.remove(this)
             }
+            outMessages.close()
+            job.cancel()
         }
 
         override fun onMessage(message: WebSocketFrame?) {
-            message?.let {
-                val clientMsg = it.textPayload
-                RobotLog.dd("Axiom", "Received from client: $clientMsg")
-
-                if (clientMsg == "pong") return
-
+            val text = message?.textPayload ?: return
+            // Parse & handle off the websocket thread
+            serverScope.launch(Dispatchers.Default) {
                 try {
-                    when (val msg = messageAdapter.fromJson(clientMsg)) {
-                        is IncomingMessage.Edit -> {
-                            println("Edit message received:")
-                            println("Path: ${msg.path} to ${msg.value}")
-
-                            Scheduler.edit(msg.path, msg.value)
-                        }
-                        null -> {
-                            RobotLog.dd("Axiom", "Received null after parsing the message")
-                        }
+                    when (val msg = messageAdapter.fromJson(text)) {
+                        is IncomingMessage.Edit -> Scheduler.edit(msg.path, msg.value)
+                        null -> RobotLog.dd("Axiom", "Null message after parse")
                     }
                 } catch (e: Exception) {
-                    RobotLog.ww("Axiom", "Failed to parse client message: ${e.message}")
+                    RobotLog.ww("Axiom", "Parse fail: ${e.message}")
                 }
             }
+//            message?.let {
+//                val clientMsg = it.textPayload
+//                RobotLog.dd("Axiom", "Received from client: $clientMsg")
+//
+//                if (clientMsg == "pong") return
+//
+//                try {
+//                    when (val msg = messageAdapter.fromJson(clientMsg)) {
+//                        is IncomingMessage.Edit -> {
+//                            println("Edit message received:")
+//                            println("Path: ${msg.path} to ${msg.value}")
+//
+//                            Scheduler.edit(msg.path, msg.value)
+//                        }
+//                        null -> {
+//                            RobotLog.dd("Axiom", "Received null after parsing the message")
+//                        }
+//                    }
+//                } catch (e: Exception) {
+//                    RobotLog.ww("Axiom", "Failed to parse client message: ${e.message}")
+//                }
+//            }
         }
 
         override fun onPong(pong: WebSocketFrame?) {}

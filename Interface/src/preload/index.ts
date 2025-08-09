@@ -20,6 +20,7 @@ ws.on('close', () => {
 ws.on('message', (data) => {
   try {
     const parsed = JSON.parse(data)
+
     ipcRenderer.send('axiom-data', parsed)
   } catch (error) {
     console.error(error)

@@ -3,14 +3,13 @@
 </script>
 
 <ul>
-  <!-- <li class="electron-version">Axiom - <span class="not-connected">NOT CONNECTED</span></li> -->
-  <!-- <li class="chrome-version">Interface v{versions.chrome}</li> -->
+  <li class="electron-version">Axiom - <span class="not-connected">NOT CONNECTED</span></li>
 </ul>
 
 <style>
   ul {
     position: absolute;
-    bottom: 30px;
+    top: 30px;
     margin: 0 auto;
     padding: 15px 0;
     font-family: 'Menlo', 'Lucida Console', monospace;

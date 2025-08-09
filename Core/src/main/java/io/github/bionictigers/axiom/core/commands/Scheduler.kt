@@ -319,10 +319,6 @@ object Scheduler {
                     }
                 }
 
-                previous.state.keys.subtract(currentState.keys).forEach {
-                    diff[it] = null
-                }
-
                 if (diff.isNotEmpty()) {
                     deltas += id to diff
                 }
