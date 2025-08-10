@@ -1,11 +1,12 @@
 <script lang="ts">
-  import Apps from './components/Apps.svelte'
-  import Status from './components/Status.svelte'
+  import Apps from './components/bars/AppBar.svelte'
+  import Status from './components/bars/StatusBar.svelte'
   import AnimatedSearch from './components/AnimatedSearch.svelte'
   import { onMount } from 'svelte'
   import type { BaseResponse } from './lib/types'
   import { getNetworkEvent } from './lib/networkRegistry'
-  import { schedulableStore } from './lib/stores/schedulableStore'
+  import './lib/stores/schedulableStore'
+  import WindowManager from './components/windows/WindowManager.svelte'
 
   let isConnected = $state(false)
 
@@ -13,14 +14,12 @@
     isConnected = window.axiomAPI.isConnected()
 
     window.electron.ipcRenderer.on('axiom-connected', () => {
-      console.log('Renderer: Axiom connected')
       isConnected = true
     })
 
-    window.electron.ipcRenderer.on('axiom-data', (_, jsonData: BaseResponse<any>) => {
+    window.electron.ipcRenderer.on('axiom-data', (_, jsonData: BaseResponse) => {
       const { name, tick, data } = jsonData
       const callback = getNetworkEvent(name)
-      console.log('Renderer: Axiom event', name)
       if (callback) {
         callback(data, tick)
       } else {
@@ -29,7 +28,6 @@
     })
 
     window.electron.ipcRenderer.on('axiom-disconnected', () => {
-      console.log('Renderer: Axiom disconnected')
       isConnected = false
     })
   })
@@ -38,6 +36,8 @@
 </script>
 
 <AnimatedSearch isSearching={!isConnected} />
+
+<WindowManager />
 
 <Apps />
 <Status {isConnected} {latency} />

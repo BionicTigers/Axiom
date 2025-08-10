@@ -7,6 +7,7 @@ declare global {
       isConnected: () => boolean
       onData: (callback: (data: unknown) => void) => void
       send: (data: string | ArrayBufferLike | Blob | ArrayBufferView) => void
+      getVersion: () => Promise<string>
     }
   }
 }

@@ -5,7 +5,7 @@ import { join } from 'path';
 import icon from '../../resources/icon.ico?asset';
 import iconOther from '../../resources/icon.png?asset';
 
-const verison = app.getVersion()
+const version = app.getVersion()
 
 function createWindow(): void {
   // Create the browser window.
@@ -14,7 +14,7 @@ function createWindow(): void {
     height: 670,
     show: false,
     icon: icon,
-    title: `Seek (${verison})`,
+    title: `Seek (${version})`,
     autoHideMenuBar: true,
     ...(process.platform !== 'win32' ? { icon: iconOther } : {}),
     webPreferences: {
@@ -58,19 +58,43 @@ app.whenReady().then(() => {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
+  // Receive forwarded renderer console messages
+  ipcMain.on(
+    'renderer-console',
+    (_event, payload: { level: 'log' | 'info' | 'warn' | 'error' | 'debug'; args: string[] }) => {
+      const { level, args } = payload || { level: 'log', args: [] }
+      switch (level) {
+        case 'error':
+          console.error('[renderer]', ...args)
+          break
+        case 'warn':
+          console.warn('[renderer]', ...args)
+          break
+        case 'info':
+          console.info('[renderer]', ...args)
+          break
+        case 'debug':
+          console.debug('[renderer]', ...args)
+          break
+        default:
+          console.log('[renderer]', ...args)
+      }
+    }
+  )
+
+  // Expose app version to renderer via IPC
+  ipcMain.handle('app:getVersion', () => app.getVersion())
+
   // Axiom connection handlers
   ipcMain.on('axiom-connected', (event) => {
-    console.log('Main: Axiom connected')
     event.sender.send('axiom-connected')
   })
 
   ipcMain.on('axiom-disconnected', (event) => {
-    console.log('Main: Axiom disconnected')
     event.sender.send('axiom-disconnected')
   })
 
   ipcMain.on('axiom-data', (event, data) => {
-    console.log('Main: Axiom data received', data)
     event.sender.send('axiom-data', data)
   })
 

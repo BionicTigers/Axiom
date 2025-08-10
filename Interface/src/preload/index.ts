@@ -8,12 +8,10 @@ const AXIOM_URL = 'ws://localhost:10464'
 const ws = new AutoWebsocket(AXIOM_URL)
 
 ws.on('open', () => {
-  console.log('Axiom connected')
   ipcRenderer.send('axiom-connected')
 })
 
 ws.on('close', () => {
-  console.log('Axiom disconnected')
   ipcRenderer.send('axiom-disconnected')
 })
 
@@ -36,7 +34,8 @@ const axiomAPI = {
   },
   send: (data: string | ArrayBufferLike | Blob | ArrayBufferView) => {
     ws.send(data)
-  }
+  },
+  getVersion: async (): Promise<string> => ipcRenderer.invoke('app:getVersion')
 }
 
 if (process.contextIsolated) {
@@ -44,7 +43,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('axiomAPI', axiomAPI)
   } catch (error) {
-    console.error(error)
+    console.error('[preload] expose failed', error)
   }
 } else {
   // @ts-ignore (define in dts)

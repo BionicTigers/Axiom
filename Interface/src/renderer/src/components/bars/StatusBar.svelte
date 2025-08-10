@@ -1,6 +1,13 @@
 <script lang="ts">
   let { isConnected, latency }: { isConnected: boolean; latency: number } = $props()
   let status = $derived(latency < 10 ? 'stable' : 'unstable')
+  let version = $state<string>('')
+
+  // Load version from main via preload
+  window.axiomAPI
+    .getVersion()
+    .then((v) => (version = v))
+    .catch(() => (version = ''))
 </script>
 
 <ul>
@@ -12,7 +19,7 @@
   {:else}
     <li>Axiom - <span class="not-connected axiom-status">not connected</span></li>
   {/if}
-  <li>Seek - v1.0.0</li>
+  <li>Seek {version}</li>
 </ul>
 
 <style>

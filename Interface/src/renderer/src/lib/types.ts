@@ -1,7 +1,7 @@
-export type BaseResponse<T> = {
+export type BaseResponse = {
     name: string,
     tick: number,
-    data: T
+    data: any
 }
 
 export type UUID = string
