@@ -15,6 +15,7 @@ import io.github.bionictigers.axiom.core.web.serializable.ObjectType
 import io.github.bionictigers.axiom.core.web.serializable.Schedulable
 import io.github.bionictigers.axiom.core.web.serializable.SchedulablesInitial
 import io.github.bionictigers.axiom.core.web.serializable.SchedulablesUpdate
+import io.github.bionictigers.axiom.core.web.serializable.SchedulerOrder
 import io.github.bionictigers.axiom.core.web.serializable.StateUpdate
 import org.firstinspires.ftc.robotcore.external.Telemetry
 import java.lang.reflect.Field
@@ -57,6 +58,7 @@ object Scheduler {
     init {
         Server.onNewConnection { send ->
             send(SchedulablesInitial(serialize()) )
+            send(SchedulerOrder(sortedCommands.map { it.id }))
         }
     }
 
@@ -111,6 +113,7 @@ object Scheduler {
     private fun serializeVariable(state: Any?, readOnly: Boolean): Any {
         return when (state) {
             is Number, is String, is Char, is Boolean -> Value(state, readOnly)
+            is Duration -> Value(state.inWholeMilliseconds, readOnly)
             is Collection<*> -> state.map { return@map serializeVariable(it!!, false) }
             else -> {
                 if (state == null) return Value(null, readOnly)
@@ -219,6 +222,10 @@ object Scheduler {
         while (stack.isNotEmpty()) {
             sortedCommands.add(stack.pop())
         }
+
+        Server.send(SchedulerOrder(
+            sortedCommands.map { it.id }
+        ))
     }
 
     private fun topologicalSort(command: GenericCommand, visited: HashSet<GenericCommand>, stack: Stack<GenericCommand>) {

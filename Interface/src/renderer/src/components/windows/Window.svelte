@@ -1,10 +1,12 @@
 <script lang="ts">
   import UpArrowIcon from '~icons/material-symbols/arrow-drop-up-rounded'
   import DownArrowIcon from '~icons/material-symbols/arrow-drop-down-rounded'
-  import CloseIcon from '~icons/material-symbols/close-rounded'
+  import { onMount } from 'svelte'
+  import type { Component } from 'svelte'
+  import type { Win } from '../../lib/stores/windows'
 
   let {
-    id,
+    id = crypto.randomUUID(),
     title = 'Untitled',
     x = $bindable(),
     y = $bindable(),
@@ -17,12 +19,12 @@
     maxH = Infinity,
     resizable = true,
     movable = true,
+    Renderer,
     containerRect,
     onFocus,
     onClose,
-    children
   } = $props<{
-    id: string
+    id?: string
     title?: string
     x: number
     y: number
@@ -35,10 +37,10 @@
     maxH?: number
     resizable?: boolean
     movable?: boolean
+    Renderer: Component<{ win: Win }>
     containerRect: DOMRect | null
     onFocus?: () => void
     onClose?: () => void
-    children?: () => unknown
   }>()
 
   // internal drag/resize state
@@ -202,9 +204,27 @@
   }
 
   function onPointerUp(e: PointerEvent): void {
+    onGlobalPointerUp(e)
+  }
+
+  function close(): void {
+    onClose?.()
+  }
+
+  function onGlobalPointerMove(e: PointerEvent): void {
+    if (!(pendingDrag || dragging || resizing)) return
+    // Require primary button to stay held during drag/resize
+    if ((e.buttons & 1) === 0) {
+      onGlobalPointerUp(e)
+      return
+    }
+    scheduleUpdate(e)
+  }
+
+  function onGlobalPointerUp(_: PointerEvent): void {
     pendingDrag = false
     try {
-      ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
+      lastPointerTarget?.releasePointerCapture(lastPointerId)
     } catch {
       // ignore
     }
@@ -212,14 +232,25 @@
     resizing = null
   }
 
-  function close(): void {
-    onClose?.()
-  }
+  onMount(() => {
+    const move = (e: PointerEvent) => onGlobalPointerMove(e)
+    const up = (e: PointerEvent) => onGlobalPointerUp(e)
+    window.addEventListener('pointermove', move, true)
+    window.addEventListener('pointerup', up, true)
+    window.addEventListener('pointercancel', up, true)
+    window.addEventListener('blur', up, true)
+    return () => {
+      window.removeEventListener('pointermove', move, true)
+      window.removeEventListener('pointerup', up, true)
+      window.removeEventListener('pointercancel', up, true)
+      window.removeEventListener('blur', up, true)
+    }
+  })
 </script>
 
 <div
   class="window"
-  data-id={id}
+  data-id={title}
   style={`transform: translate3d(${x}px, ${y}px, 0); width:${w}px; height:${h}px; z-index:${z};`}
   aria-grabbed={dragging}
   data-dragging={dragging}
@@ -243,7 +274,9 @@
   </div>
 
   {#if !minimized}
-    <div class="content">{@render children?.()}</div>
+    <div class="content">
+      <Renderer id={id} />
+    </div>
   {/if}
 
   {#if resizable && !minimized}
@@ -286,6 +319,7 @@
     background: #1c202e;
     border: 2px solid #242e40;
     border-bottom: none;
+    z-index: 1;
   }
 
   .title {
@@ -323,6 +357,7 @@
   }
   .content {
     padding: 0.75rem;
+    padding-bottom: 0;
     height: calc(100% - 35px);
     overflow: auto;
     background: #12141a;

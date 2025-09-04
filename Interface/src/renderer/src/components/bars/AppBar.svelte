@@ -1,13 +1,17 @@
 <script lang="ts">
-  import CommandIcon from '~icons/material-symbols/keyboard-command-key'
+  import CommandIcon from '~icons/material-symbols/format-list-bulleted';
+  import RobotIcon from '~icons/material-symbols/robot-2-rounded';
   import GamepadIcon from '~icons/material-symbols/gamepad-rounded'
   import MapIcon from '~icons/material-symbols/map'
   import EyeIcon from '~icons/solar/eye-bold'
   import AppList from './helpers/AppList.svelte'
   import { onMount } from 'svelte'
+  import * as registry from '../windows/registry/index'
 
   let openKey = $state<string | null>(null)
   let barElement: HTMLElement | null = null
+
+  let { disabled = $bindable(false) } = $props<{ disabled: boolean }>()
 
   onMount(() => {
     function handleDocClick(event: MouseEvent): void {
@@ -21,20 +25,24 @@
     return () => document.removeEventListener('mousedown', handleDocClick, true)
   })
 
-  const commandOptions = [{ label: 'Command 1' }, { label: 'Command 2' }, { label: 'Command 3' }]
+  const commandOptions = [{ label: 'States', component: registry.States }, { label: 'Scheduler', component: registry.Scheduler }]
 
-  const gamepadOptions = [{ label: 'Gamepad 1' }, { label: 'Gamepad 2' }, { label: 'Gamepad 3' }]
+  const gamepadOptions = [{ label: 'Gamepad Overview', component: registry.GamepadViewer }]
 
   const hardwareOptions = [
-    { label: 'Hardware 1' },
-    { label: 'Hardware 2' },
-    { label: 'Hardware 3' }
+    { label: 'Hardware Viewer', component: registry.HardwareViewer },
+    { label: 'Config', component: registry.Config },
   ]
 
-  const viewerOptions = [{ label: 'Graph' }, { label: 'Table' }, { label: 'Chart' }]
+  const robotOptions = [
+    { label: 'Control', component: registry.Control },
+    { label: 'Telemetry', component: registry.Telemetry }, 
+  ]
+
+  const viewerOptions = [{ label: 'Graph', component: registry.Graph }]
 </script>
 
-<ul bind:this={barElement}>
+<ul bind:this={barElement} class:disabled>
   <li>
     <AppList
       title="Command"
@@ -42,6 +50,15 @@
       options={commandOptions}
       isOpen={openKey === 'command'}
       onToggle={() => (openKey = openKey === 'command' ? null : 'command')}
+    />
+  </li>
+  <li>
+    <AppList
+      title="Robot"
+      icon={RobotIcon}
+      options={robotOptions}
+      isOpen={openKey === 'robot'}
+      onToggle={() => (openKey = openKey === 'robot' ? null : 'robot')}
     />
   </li>
   <li>
@@ -87,9 +104,10 @@
     background-color: #202127;
     color: #e6e6e6;
     backdrop-filter: blur(24px);
+    z-index: 1000;
   }
 
-  ul li {
+  li {
     display: block;
     float: left;
     border-right: 1px solid var(--ev-c-gray-1);
@@ -101,5 +119,10 @@
     &:last-child {
       border: none;
     }
+  }
+
+  :global(.disabled) {
+    opacity: 0.5;
+    pointer-events: none;
   }
 </style>

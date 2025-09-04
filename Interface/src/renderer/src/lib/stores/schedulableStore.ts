@@ -2,20 +2,20 @@ import { writable } from 'svelte/store'
 import type { UUID } from '../types'
 import { registerNetworkEvent } from '../networkRegistry'
 
-type CommandStateValue = string | number | boolean | null
-type CommandState = CommandStateValue | CommandState[] | { [key: string]: CommandState } 
+type CommandStateValueBase = string | number | boolean | null
+type CommandStateValue = { value: CommandStateValueBase; readonly: boolean }
+type CommandState = CommandStateValue | CommandState[] | { [key: string]: CommandState }
 
 type SchedulableType = 'Command' | 'System'
 
-type SchedulableInitial = [
-  {
-    name: string,
-    id: UUID,
-    type: SchedulableType,
-    parent: UUID | null,
-    state: Map<string, CommandState>
-  }
-]
+type SchedulableInitial = Array<{
+  name: string
+  id: UUID
+  type: SchedulableType
+  parent: UUID | null
+  // JSON payloads carry plain objects, not Maps
+  state: Record<string, CommandState>
+}>
 
 type SchedulableUpdate = {
     updated: {
@@ -28,19 +28,33 @@ type SchedulableUpdate = {
     removed: UUID[]
 }
 
-type SchedulableStateUpdate = [
-  {
-    id: UUID,
-    field: string,
-    value: CommandState
+type SchedulableStateUpdate = Array<{
+  id: UUID
+  field: string
+  value: CommandState
+}>
+
+type SchedulableOrder = UUID[]
+
+class StateMap extends Map<string, CommandState> {
+  constructor(initial: Map<string, CommandState> | Record<string, CommandState>) {
+    if (initial instanceof Map) {
+      super(initial)
+    } else {
+      super(Object.entries(initial))
+    }
   }
-]
+
+  getValue(field: string): CommandStateValueBase {
+    return (this.get(field) as CommandStateValue | undefined)?.value ?? null
+  }
+}
 
 export type Schedulable = {
   name: string
   type: SchedulableType
   parent: UUID | null
-  state: Map<string, CommandState>
+  state: StateMap
 }
 
 export function updateSchedulablesFromInitial(data: SchedulableInitial) {
@@ -51,7 +65,7 @@ export function updateSchedulablesFromInitial(data: SchedulableInitial) {
       name,
       type,
       parent,
-      state: new Map(state)
+      state: new StateMap(state)
     })
   })
 
@@ -70,7 +84,7 @@ export function updateSchedulables({ updated, removed }: SchedulableUpdate) {
         name: schedulable.name,
         type: schedulable.type,
         parent: schedulable.parent,
-        state: new Map(existingSchedulable?.state ?? new Map())
+        state: new StateMap(existingSchedulable?.state ?? new Map())
       })
     })
 
@@ -90,8 +104,14 @@ export function updateStates(data: SchedulableStateUpdate) {
   })
 }
 
+export function setOrder(data: SchedulableOrder) {
+  schedulableOrderStore.set(data)
+}
+
 export const schedulableStore = writable<Map<UUID, Schedulable>>(new Map());
+export const schedulableOrderStore = writable<Array<UUID>>(new Array());
 
 registerNetworkEvent('schedulable_initial', updateSchedulablesFromInitial)
 registerNetworkEvent('schedulable_update', updateSchedulables)
 registerNetworkEvent('schedulable_state_update', updateStates)
+registerNetworkEvent('schedulable_order', setOrder)

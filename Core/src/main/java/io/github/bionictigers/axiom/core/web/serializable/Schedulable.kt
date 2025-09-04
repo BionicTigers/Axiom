@@ -15,6 +15,34 @@ data class Schedulable(
     val type: ObjectType
 )
 
+internal data class SchedulerOrder(
+    val order: List<String>
+) : Serializable {
+    override fun serialize(tick: Long): Map<String, Any?> {
+        return mapOf(
+            "name" to "schedulable_order",
+            "tick" to tick,
+            "data" to order
+        )
+    }
+}
+
+internal data class SchedulerDetails(
+    val tick: Long,
+    val executionTime: Long,
+) : Serializable {
+    override fun serialize(tick: Long): Map<String, Any?> {
+        return mapOf(
+            "name" to "scheduler_details",
+            "tick" to tick,
+            "data" to mapOf(
+                "tick" to this.tick,
+                "executionTime" to executionTime
+            )
+        )
+    }
+}
+
 internal data class SchedulablesInitial(
     val objects: List<Schedulable>,
 ) : Serializable {

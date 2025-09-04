@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { Component } from 'svelte'
+  import * as windowsStore from '../../../lib/stores/windows'
 
-  type Option = { label: string }
+  type Option = { label: string, component: Component }
 
   let {
     title,
@@ -22,7 +23,11 @@
   }
 
   function handleOptionClick(label: string): void {
-    console.log(`Option clicked: ${label}`)
+    const option = options.find((opt) => opt.label === label)
+    if (option) {
+      windowsStore.add({ title: option.label, component: option.component })
+      windowsStore.bringToFront(option.label)
+    }
   }
 </script>
 

@@ -15,8 +15,8 @@ abstract class System {
     abstract val name: String
     val id: String = UUID.randomUUID().toString()
 
-    val dependencies: List<System> = emptyList()
+    open val dependencies: List<System> = emptyList()
 
-    val beforeRun: Command<out BaseCommandState>? = null
-    val afterRun: Command<out BaseCommandState>? = null
+    open val beforeRun: Command<out BaseCommandState>? = null
+    open val afterRun: Command<out BaseCommandState>? = null
 }

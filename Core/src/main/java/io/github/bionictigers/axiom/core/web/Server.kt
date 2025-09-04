@@ -162,28 +162,6 @@ object Server {
                     RobotLog.ww("Axiom", "Parse fail: ${e.message}")
                 }
             }
-//            message?.let {
-//                val clientMsg = it.textPayload
-//                RobotLog.dd("Axiom", "Received from client: $clientMsg")
-//
-//                if (clientMsg == "pong") return
-//
-//                try {
-//                    when (val msg = messageAdapter.fromJson(clientMsg)) {
-//                        is IncomingMessage.Edit -> {
-//                            println("Edit message received:")
-//                            println("Path: ${msg.path} to ${msg.value}")
-//
-//                            Scheduler.edit(msg.path, msg.value)
-//                        }
-//                        null -> {
-//                            RobotLog.dd("Axiom", "Received null after parsing the message")
-//                        }
-//                    }
-//                } catch (e: Exception) {
-//                    RobotLog.ww("Axiom", "Failed to parse client message: ${e.message}")
-//                }
-//            }
         }
 
         override fun onPong(pong: WebSocketFrame?) {}

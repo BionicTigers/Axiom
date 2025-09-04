@@ -7,6 +7,19 @@ import iconOther from '../../resources/icon.png?asset';
 
 const version = app.getVersion()
 
+// Track renderer readiness and queue messages arriving before listeners are attached
+let rendererReady = false
+let mainWebContents: Electron.WebContents | null = null
+const pendingAxiomMessages: Array<{ channel: 'axiom-connected' | 'axiom-disconnected' | 'axiom-data'; payload?: unknown }> = []
+
+function sendToRenderer(channel: 'axiom-connected' | 'axiom-disconnected' | 'axiom-data', payload?: unknown): void {
+  if (rendererReady && mainWebContents) {
+    mainWebContents.send(channel, payload as any)
+  } else {
+    pendingAxiomMessages.push({ channel, payload })
+  }
+}
+
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -25,6 +38,23 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+  })
+
+  // Remember the webContents for later sends
+  mainWebContents = mainWindow.webContents
+
+  // During reloads/navigations, ensure we queue messages until renderer reattaches listeners
+  mainWindow.webContents.on('will-navigate', () => {
+    rendererReady = false
+    console.log('[main] will-navigate -> rendererReady=false')
+  })
+  mainWindow.webContents.on('did-start-navigation', () => {
+    rendererReady = false
+    console.log('[main] did-start-navigation -> rendererReady=false')
+  })
+  mainWindow.webContents.on('did-start-loading', () => {
+    rendererReady = false
+    console.log('[main] did-start-loading -> rendererReady=false')
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -86,16 +116,30 @@ app.whenReady().then(() => {
   ipcMain.handle('app:getVersion', () => app.getVersion())
 
   // Axiom connection handlers
-  ipcMain.on('axiom-connected', (event) => {
-    event.sender.send('axiom-connected')
+  ipcMain.on('axiom-connected', () => {
+    sendToRenderer('axiom-connected')
   })
 
-  ipcMain.on('axiom-disconnected', (event) => {
-    event.sender.send('axiom-disconnected')
+  ipcMain.on('axiom-disconnected', () => {
+    sendToRenderer('axiom-disconnected')
   })
 
-  ipcMain.on('axiom-data', (event, data) => {
-    event.sender.send('axiom-data', data)
+  ipcMain.on('axiom-data', (_event, data) => {
+    console.log("Recieved data for ", data.name)
+    sendToRenderer('axiom-data', data)
+  })
+
+  // Renderer signals when it has registered listeners
+  ipcMain.on('renderer-ready', (event) => {
+    rendererReady = true
+    // Prefer the sender that announced readiness
+    mainWebContents = event.sender
+    console.log('[main] renderer-ready; flushing', pendingAxiomMessages.length, 'queued messages')
+    // Flush any queued messages in order
+    for (const { channel, payload } of pendingAxiomMessages) {
+      event.sender.send(channel, payload as any)
+    }
+    pendingAxiomMessages.length = 0
   })
 
   createWindow()

@@ -35,6 +35,7 @@
     border-radius: 22px;
     background-color: #202127;
     backdrop-filter: blur(24px);
+    z-index: 1000;
   }
 
   ul li {
