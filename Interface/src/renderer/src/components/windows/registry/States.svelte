@@ -1,15 +1,42 @@
 <script lang="ts">
+  import type { Component } from "svelte"
   import { schedulableStore } from "../../../lib/stores/schedulableStore"
-  import { update } from "../../../lib/stores/windows"
+  import { add, bringToFront, update } from "../../../lib/stores/windows"
+  import StateView from "./StateView.svelte"
 
   let { id }: { id: string } = $props()
   update(id, { maxW: 350 })
 
   let persistentExpanded = $state(true)
   let currentExpanded = $state(true)
+
+  function openCommandState(id: string) {
+    let schedulable = $schedulableStore.get(id)
+    if (!schedulable) return
+    add({ id: id, title: schedulable.name, component: StateView as Component })
+    bringToFront(schedulable.name)
+  }
+
+  let search = $state("")
+  let store = $state($schedulableStore)
+
+  function filter() {
+    if (!search) return store
+    return Array.from(store).filter(([_, schedulable]) => {
+      for (const [key, _] of schedulable.state) {
+        if (key.toLowerCase().includes(search.toLowerCase()) || schedulable.name.toLowerCase().includes(search.toLowerCase())) {
+          return true
+        }
+      }
+      return false
+    })
+  }
 </script>
 
 <ul>
+  <li class="search">
+    <input type="text" placeholder="Search" bind:value={search} />
+  </li>
   <li>
     <button class="header" onclick={() => persistentExpanded = !persistentExpanded}>
       <h3>Persistent</h3>
@@ -17,9 +44,11 @@
     </button>
     <hr>
     <ul class="commands" class:hidden={!persistentExpanded}>
-      <li>Command 1</li>
-      <li>Command 2</li>
-      <li>Command 3</li>
+      <!-- {#each $schedulableStore as [id, schedulable]}
+        <li>
+          <button onclick={() => openCommandState(id)}>{schedulable.name}</button>
+        </li>
+      {/each} -->
     </ul>
   </li>
   <li class="current">
@@ -29,8 +58,10 @@
     </button>
     <hr>
     <ul class="commands" class:hidden={!currentExpanded}>
-      {#each $schedulableStore as [_, schedulable]}
-        <li>{schedulable.name}</li>
+      {#each filter() as [id, schedulable]}
+        <li>
+          <button onclick={() => openCommandState(id)}>{schedulable.name}</button>
+        </li>
       {/each}
     </ul>
   </li>
@@ -63,7 +94,6 @@
 
   .commands li {
     background-color: rgb(33, 42, 60);
-    padding: 10px;
     border-radius: 10px;
     cursor: pointer;
     text-overflow: ellipsis;
@@ -74,6 +104,25 @@
   }
 
   .commands li:hover {
+    background-color: rgb(43, 52, 70);
+  }
+
+  .commands button {
+    background-color: rgba(33, 42, 60, 0);
+    padding: 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    width: 100%;
+    border: none;
+    text-align: left;
+    transition: background-color 0.1s ease-in-out;
+    color: inherit;
+  }
+
+  .commands button:hover {
     background-color: rgb(43, 52, 70);
   }
 
@@ -101,5 +150,25 @@
     margin: 0;
     color: rgb(230, 233, 239);
     font-size: 1.2rem;
+  }
+
+  .search {
+    border: none;
+    background-color: transparent;
+    width: 100%;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: center;
+  }
+  
+  .search input {
+    border-radius: 10px;
+    border: 1px solid rgb(33, 42, 60);
+    background-color: rgb(33, 42, 60);
+    color: rgb(230, 233, 239);
+    font-size: 1rem;
+    width: 80%;
+    padding: 10px;
+    text-align: center;
   }
 </style>

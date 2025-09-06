@@ -22,7 +22,6 @@
       const { name, tick, data } = jsonData
       const callback = getNetworkEvent(name)
       if (callback) {
-        console.log("handled axiom-data", name)
         callback(data, tick)
       } else {
         console.warn(`Renderer: No callback registered for event ${name}`)
@@ -33,7 +32,6 @@
       schedulableOrderStore.set([])
       schedulableStore.set(new Map())
       isConnected = false
-      console.log("Clearing stores")
     })
 
     // Signal main once all listeners are registered

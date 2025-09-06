@@ -23,7 +23,7 @@
     <li class="schedulable">
       <h3>Scheduler</h3>
       <div class="info">
-        <p>Execution Time: {schedulerExecutionTime ?? "??"}ms</p>
+        <!-- <p>Execution Time: {schedulerExecutionTime ?? "??"}ms</p> -->
       </div>
     </li>
     <li>

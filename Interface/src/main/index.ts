@@ -125,7 +125,6 @@ app.whenReady().then(() => {
   })
 
   ipcMain.on('axiom-data', (_event, data) => {
-    console.log("Recieved data for ", data.name)
     sendToRenderer('axiom-data', data)
   })
 

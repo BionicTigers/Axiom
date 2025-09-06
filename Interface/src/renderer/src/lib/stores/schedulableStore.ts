@@ -1,10 +1,9 @@
 import { writable } from 'svelte/store'
 import type { UUID } from '../types'
+import type { CommandState, CommandStateValue, CommandStateValueBase } from '../types'
 import { registerNetworkEvent } from '../networkRegistry'
 
-type CommandStateValueBase = string | number | boolean | null
-type CommandStateValue = { value: CommandStateValueBase; readonly: boolean }
-type CommandState = CommandStateValue | CommandState[] | { [key: string]: CommandState }
+// Types now sourced from ../types
 
 type SchedulableType = 'Command' | 'System'
 
