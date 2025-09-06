@@ -1,51 +1,28 @@
 <script lang="ts">
   import { schedulableOrderStore, schedulableStore } from '../../../lib/stores/schedulableStore'
   import { update } from '../../../lib/stores/windows'
+  import SchedulableRow from './SchedulableRow.svelte'
 
   let { id }: { id: string } = $props()
   update(id, { maxW: 350 })
-
-  function getColorForSchedulerTime(executionTime: number) {
-    if (executionTime < 20) return 'rgb(100, 240, 100)'
-    if (executionTime < 40) return 'rgb(240, 240, 100)'
-    return 'rgb(240, 100, 100)'
-  }
-
-  function getColorForCommandTime(executionTime: number) {
-    if (executionTime < 6) return 'rgb(100, 240, 100)'
-    if (executionTime < 12) return 'rgb(240, 240, 100)'
-    return 'rgb(240, 100, 100)'
-  }
 </script>
 
 <div>
   <ul>
-    <li class="schedulable">
+    <!-- <li class="schedulable">
       <h3>Scheduler</h3>
       <div class="info">
-        <!-- <p>Execution Time: {schedulerExecutionTime ?? "??"}ms</p> -->
+        <p>Execution Time: {schedulerExecutionTime ?? "??"}ms</p>
       </div>
-    </li>
+    </li> -->
     <li>
       <h3>Execution Order</h3>
-      <hr>
+      <hr />
     </li>
-    {#each $schedulableOrderStore as id}
+    {#each $schedulableOrderStore as id (id)}
       {@const schedulable = $schedulableStore.get(id)}
-      {#if (schedulable)}
-        {@const executionTime = schedulable.state.getValue('executionTime') as string ?? "0"}
-        <li class="schedulable">
-          <p>{schedulable.name}</p>
-          <div class="info">
-            {#if schedulable.parent}
-              {@const parent = $schedulableStore.get(schedulable.parent)}
-              {#if parent}
-                <p class="gray">{parent.name}</p>
-              {/if}
-            {/if}
-            <p class="right" style={`color: ${getColorForCommandTime(parseInt(executionTime))}`}>{executionTime ?? "??"}ms</p>
-          </div>
-        </li>
+      {#if schedulable}
+        <SchedulableRow {id} {schedulable} />
       {/if}
     {/each}
   </ul>

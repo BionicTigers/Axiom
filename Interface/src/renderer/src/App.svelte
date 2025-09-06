@@ -14,11 +14,11 @@
   onMount(() => {
     isConnected = window.axiomAPI.isConnected()
 
-    window.electron.ipcRenderer.on('axiom-connected', () => {
+    const offConnected = window.axiomAPI.onConnected(() => {
       isConnected = true
     })
 
-    window.electron.ipcRenderer.on('axiom-data', (_, jsonData: BaseResponse) => {
+    const offData = window.axiomAPI.onData((jsonData: BaseResponse) => {
       const { name, tick, data } = jsonData
       const callback = getNetworkEvent(name)
       if (callback) {
@@ -28,27 +28,27 @@
       }
     })
 
-    window.electron.ipcRenderer.on('axiom-disconnected', () => {
+    const offDisconnected = window.axiomAPI.onDisconnected(() => {
       schedulableOrderStore.set([])
       schedulableStore.set(new Map())
       isConnected = false
     })
 
-    // Signal main once all listeners are registered
     try {
       window.electron.ipcRenderer.send('renderer-ready')
-    } catch {}
+    } catch {
+      console.error('Failed to send renderer-ready signal')
+    }
 
     return () => {
-      window.electron.ipcRenderer.removeAllListeners('axiom-data')
-      window.electron.ipcRenderer.removeAllListeners('axiom-connected')
-      window.electron.ipcRenderer.removeAllListeners('axiom-disconnected')
+      offConnected()
+      offData()
+      offDisconnected()
     }
   })
 
   let latency = $state(1)
 </script>
-
 
 <Apps disabled={!isConnected} />
 <Status {isConnected} {latency} />
@@ -56,7 +56,3 @@
 <WindowManager />
 
 <AnimatedSearch isSearching={!isConnected} />
-
-<style>
-  /* App styles can go here if needed */
-</style>

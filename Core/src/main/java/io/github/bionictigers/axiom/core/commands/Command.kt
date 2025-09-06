@@ -1,10 +1,31 @@
 package io.github.bionictigers.axiom.core.commands
 
+import android.annotation.TargetApi
+import android.os.Build
 import java.util.UUID
 import kotlin.time.Duration
 import kotlin.time.TimeSource
+import kotlin.time.measureTime
 
 typealias BaseCommand = Command<BaseCommandState>
+
+private class CommandStopped : RuntimeException(null, null, false, false)
+
+class ExecutableDsl<T: BaseCommandState>(val command: Command<T>) {
+    fun stop(): Nothing {
+        Scheduler.remove(command)
+
+        throw CommandStopped()
+    }
+
+    internal fun action(lambda: ExecutableDsl<T>.(T) -> Unit) {
+        lambda(command.state)
+    }
+
+    internal fun predicate(lambda: ExecutableDsl<T>.(T) -> Boolean): Boolean {
+        return lambda(command.state)
+    }
+}
 
 /**
  * Commands are used to execute functions in the scheduler.
@@ -24,13 +45,19 @@ open class Command<T: BaseCommandState> internal constructor(
     val dependencies = ArrayList<Command<out BaseCommandState>>()
     val id = UUID.randomUUID().toString()
 
-    private var predicate: (T) -> Boolean = { true }
-    private var action: (T) -> Boolean = { false }
+    private var predicate: ExecutableDsl<T>.(T) -> Boolean = { true }
+    private var action: ExecutableDsl<T>.(T) -> Unit = {}
 
     internal var onEnter: (T) -> Unit = {}
     internal var onExit: (T) -> Unit = {}
 
     internal var running = false
+
+    private val executableDsl = ExecutableDsl<T>(this)
+
+    init {
+        parent?.let { dependsOn(it) }
+    }
 
     /**
      * Adds systems that the command depends on.
@@ -81,7 +108,7 @@ open class Command<T: BaseCommandState> internal constructor(
      *
      * @param lambda The function to be invoked. The value returned in the lambda determines if the command stays in the scheduler. True means it leaves the scheduler.
      */
-    fun action(lambda: (T) -> Boolean): Command<T> {
+    fun action(lambda: ExecutableDsl<T>.(T) -> Unit): Command<T> {
         action = lambda
         return this
     }
@@ -92,7 +119,7 @@ open class Command<T: BaseCommandState> internal constructor(
      *
      * @param lambda The predicate to be invoked. The value returned in the lambda determines if the command should be executed.
      */
-    fun requires(lambda: (T) -> Boolean): Command<T> {
+    fun requires(lambda: ExecutableDsl<T>.(T) -> Boolean): Command<T> {
         predicate = lambda
         return this
     }
@@ -122,21 +149,21 @@ open class Command<T: BaseCommandState> internal constructor(
      *
      * @return True if the command was executed, false otherwise.
      */
-    internal fun execute(): Boolean {
+    internal fun execute() {
         state.deltaTime = state.lastExecutedAt?.elapsedNow() ?: Duration.ZERO
+        if (interval != null && state.deltaTime < interval) return
         state.lastExecutedAt = TimeSource.Monotonic.markNow()
-        if (interval != null && state.deltaTime < interval) return false
 
-        var result = false
-        if (predicate(state)) {
-            result = action(state)
+        try {
+            val time = measureTime {
+                if (executableDsl.predicate(predicate))
+                    executableDsl.action(action)
+            }
+
+            state.executionTime = time
+        } catch (e: CommandStopped) {
+            return
         }
-
-        if (result) {
-            Scheduler.remove(this)
-        }
-
-        return result
     }
 
     internal fun internalEnter() {
@@ -161,33 +188,5 @@ open class Command<T: BaseCommandState> internal constructor(
         return newCommand
     }
 
-    companion object {
-        fun create(name: String = "Unnamed Command", interval: Duration? = null, block: BaseCommand.() -> Unit = {}): BaseCommand {
-            return create(name, BaseCommandState(), interval, block)
-        }
-
-        fun <T: BaseCommandState> create(name: String = "Unnamed Command", state: T, interval: Duration? = null, block: Command<T>.() -> Unit = {}): Command<T> {
-            return Command(name, state, interval).apply(block)
-        }
-
-        fun continuous(name: String = "Continuous Command", interval: Duration? = null, action: (BaseCommandState) -> Unit): BaseCommand {
-            return continuous(name, BaseCommandState(), interval, action)
-        }
-
-        fun <T: BaseCommandState> continuous(name: String = "Continuous Command", state: T, interval: Duration? = null, action: (T) -> Unit): Command<T> {
-            return Command(name, state, interval).action { action(it); false }
-        }
-
-        fun instant(name: String = "Instant command", actionToRun: (BaseCommandState) -> Unit): BaseCommand {
-            return instant(name, BaseCommandState(), actionToRun)
-        }
-
-        fun <T: BaseCommandState> instant(name: String = "Instant command", state: T, actionToRun: (T) -> Unit): Command<T> {
-            return Command(name, state).action { actionToRun(it); true }
-        }
-
-        fun wait(name: String = "Wait Command", duration: Duration): BaseCommand {
-            return create(name) { action { it.enteredAt!!.elapsedNow() >= duration } }
-        }
-    }
+    companion object : CommandBuilder()
 }

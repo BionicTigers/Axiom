@@ -11,7 +11,7 @@ data class Schedulable(
     val name: String,
     val id: String,
     val state: Map<String, Any>,
-    val parent: String?, // Hash of parent system if command
+    val parent: String?, // Id of parent system if type is command
     val type: ObjectType
 )
 

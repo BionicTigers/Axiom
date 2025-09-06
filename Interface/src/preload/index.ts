@@ -29,8 +29,20 @@ ws.start()
 
 const axiomAPI = {
   isConnected: () => ws.isConnected,
-  onData: (callback: (data: unknown) => void) => {
-    ipcRenderer.on('axiom-data', (_, data) => callback(data))
+  onConnected: (callback: () => void): (() => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('axiom-connected', handler)
+    return () => ipcRenderer.removeListener('axiom-connected', handler)
+  },
+  onDisconnected: (callback: () => void): (() => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('axiom-disconnected', handler)
+    return () => ipcRenderer.removeListener('axiom-disconnected', handler)
+  },
+  onData: (callback: (data: unknown) => void): (() => void) => {
+    const handler = (_: unknown, data: unknown) => callback(data)
+    ipcRenderer.on('axiom-data', handler)
+    return () => ipcRenderer.removeListener('axiom-data', handler)
   },
   send: (data: string | ArrayBufferLike | Blob | ArrayBufferView) => {
     ws.send(data)

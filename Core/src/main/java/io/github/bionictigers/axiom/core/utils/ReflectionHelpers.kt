@@ -1,6 +1,8 @@
 package io.github.bionictigers.axiom.core.utils
 
 import kotlin.reflect.KClass
+import kotlin.reflect.KProperty1
+import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.superclasses
 
@@ -8,7 +10,7 @@ import kotlin.reflect.full.superclasses
  * Non-inline recursive helper that searches through the supertypes
  * for a property named [propertyName] that is annotated with [annotationClass].
  */
-fun <T : Annotation> searchSuperTypes(
+internal fun <T : Annotation> searchSuperTypes(
     kClass: KClass<*>,
     propertyName: String,
     annotationClass: KClass<T>
@@ -26,29 +28,10 @@ fun <T : Annotation> searchSuperTypes(
 }
 
 /**
- * Inline function that checks if the property named [propertyName] on the given [instance]
- * is annotated with annotation type T. This function first checks the property declared in the class,
- * then delegates to [searchSuperTypes] to check the supertypes.
- */
-inline fun <reified T : Annotation> hasAnnotationOnProperty(
-    instance: Any,
-    propertyName: String
-): Boolean {
-    val kClass = instance::class
-    // Check if the property declared on this class has the annotation.
-    val property = kClass.memberProperties.firstOrNull { it.name == propertyName }
-    if (property != null && property.annotations.any { it is T }) {
-        return true
-    }
-    // Delegate to the non-inline recursive helper for supertypes.
-    return searchSuperTypes(kClass, propertyName, T::class)
-}
-
-/**
  * Recursively searches through supertypes for a property named [propertyName]
  * and returns the first annotation of type [annotationClass], or null if not found.
  */
-fun <T : Annotation> findAnnotationInSuperTypes(
+internal fun <T : Annotation> findAnnotationInSuperTypes(
     kClass: KClass<*>,
     propertyName: String,
     annotationClass: KClass<T>
@@ -67,29 +50,26 @@ fun <T : Annotation> findAnnotationInSuperTypes(
     return null
 }
 
-/**
- * Inline helper that returns the annotation of type T on the named property,
- * checking first on the instance's class, then up through its supertypes.
- */
-inline fun <reified T : Annotation> getAnnotationOnProperty(
-    instance: Any,
-    propertyName: String
-): T? {
-    val kClass = instance::class
-    // check on this class
-    kClass.memberProperties
-        .firstOrNull { it.name == propertyName }
-        ?.annotations
-        ?.filterIsInstance<T>()
-        ?.firstOrNull()
-        ?.let { return it }
+/** Finds a property by name on a class, searching declared members and supertypes. Includes private members. */
+internal fun KClass<*>.findPropertyInHierarchy(name: String): KProperty1<Any, *>? {
+    // First try the fast path (public/protected + inherited)
+    @Suppress("UNCHECKED_CAST")
+    memberProperties.firstOrNull { it.name == name }?.let { return it as KProperty1<Any, *> }
 
-    // delegate to recursive supertype search
-    return findAnnotationInSuperTypes(kClass, propertyName, T::class)
+    // Then include private props by traversing declared members up the hierarchy
+    var current: KClass<*>? = this
+    while (current != null && current != Any::class) {
+        @Suppress("UNCHECKED_CAST")
+        current.declaredMemberProperties
+            .firstOrNull { it.name == name }
+            ?.let { return it as KProperty1<Any, *> }
+        current = current.superclasses.firstOrNull()
+    }
+    return null
 }
 
 
-fun <T : Any> String.convertTo(targetClass: KClass<T>): T {
+internal fun <T : Any> String.convertTo(targetClass: KClass<T>): T {
     return when (targetClass) {
         Int::class -> this.toInt() as T
         Double::class -> this.toDouble() as T

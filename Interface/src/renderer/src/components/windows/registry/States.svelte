@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { Component } from "svelte"
-  import { schedulableStore } from "../../../lib/stores/schedulableStore"
-  import { add, bringToFront, update } from "../../../lib/stores/windows"
-  import StateView from "./StateView.svelte"
+  import type { Component } from 'svelte'
+  import { schedulableStore } from '../../../lib/stores/schedulableStore'
+  import { add, bringToFront, update } from '../../../lib/stores/windows'
+  import StateView from './StateView.svelte'
 
   let { id }: { id: string } = $props()
   update(id, { maxW: 350 })
@@ -17,20 +17,18 @@
     bringToFront(schedulable.name)
   }
 
-  let search = $state("")
+  let search = $state('')
   let store = $state($schedulableStore)
 
-  function filter() {
-    if (!search) return store
-    return Array.from(store).filter(([_, schedulable]) => {
-      for (const [key, _] of schedulable.state) {
-        if (key.toLowerCase().includes(search.toLowerCase()) || schedulable.name.toLowerCase().includes(search.toLowerCase())) {
-          return true
-        }
+  let filteredStates = $derived(
+    Array.from(store).filter(([_, schedulable]) => {
+      if (search === '') return true
+      if (schedulable.name.toLowerCase().includes(search.toLowerCase())) {
+        return true
       }
       return false
     })
-  }
+  )
 </script>
 
 <ul>
@@ -38,11 +36,11 @@
     <input type="text" placeholder="Search" bind:value={search} />
   </li>
   <li>
-    <button class="header" onclick={() => persistentExpanded = !persistentExpanded}>
+    <button class="header" onclick={() => (persistentExpanded = !persistentExpanded)}>
       <h3>Persistent</h3>
-      <p>{persistentExpanded ? "-" : "+"}</p>
+      <p>{persistentExpanded ? '-' : '+'}</p>
     </button>
-    <hr>
+    <hr />
     <ul class="commands" class:hidden={!persistentExpanded}>
       <!-- {#each $schedulableStore as [id, schedulable]}
         <li>
@@ -52,13 +50,13 @@
     </ul>
   </li>
   <li class="current">
-    <button class="header" onclick={() => currentExpanded = !currentExpanded}>
-    <h3>Current</h3>
-      <p>{currentExpanded ? "-" : "+"}</p>
+    <button class="header" onclick={() => (currentExpanded = !currentExpanded)}>
+      <h3>Current</h3>
+      <p>{currentExpanded ? '-' : '+'}</p>
     </button>
-    <hr>
+    <hr />
     <ul class="commands" class:hidden={!currentExpanded}>
-      {#each filter() as [id, schedulable]}
+      {#each filteredStates as [id, schedulable] (id)}
         <li>
           <button onclick={() => openCommandState(id)}>{schedulable.name}</button>
         </li>
@@ -160,7 +158,7 @@
     display: flex;
     justify-content: center;
   }
-  
+
   .search input {
     border-radius: 10px;
     border: 1px solid rgb(33, 42, 60);

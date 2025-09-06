@@ -1,8 +1,16 @@
+import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
+import java.util.Base64
+
 plugins {
-//    id("com.android.application")
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.dokka") version "2.0.0"      // optional but recommended for javadoc
+    id("com.vanniktech.maven.publish") version "0.34.0"
+    id("signing")
 }
+
+group = "io.github.bionictigers"
+version = "0.1.0"
 
 java {
     toolchain {
@@ -19,17 +27,16 @@ kotlin {
 
 android {
     namespace = "io.github.bionictigers"
-    compileSdk = 34
+
+    defaultConfig {
+        compileSdk = 35
+        minSdk = 24
+    }
 
     flavorDimensions += "environment"
-
     productFlavors {
-        create("mock") {
-            dimension = "environment"
-        }
-        create("prod") {
-            dimension = "environment"
-        }
+        create("mock") { dimension = "environment" }
+        create("prod") { dimension = "environment" }
     }
 
     // Configure test options
@@ -73,4 +80,46 @@ private fun DependencyHandlerScope.mockImplementation(dependency: String) {
 
 private fun DependencyHandlerScope.prodImplementation(dependency: String) {
     add("prodImplementation", dependency)
+}
+
+val keyRaw = providers.gradleProperty("signingInMemoryKey").orNull
+val pass = providers.gradleProperty("signingInMemoryKeyPassword").orNull?.ifBlank { null }
+
+signing {
+    // Feed the ASCII-armored PRIVATE key to Gradle’s signing
+    if (!keyRaw.isNullOrBlank() && keyRaw.contains("BEGIN PGP PRIVATE KEY BLOCK")) {
+        useInMemoryPgpKeys(keyRaw.replace("\r\n", "\n"), pass)
+    }
+}
+
+mavenPublishing {
+    publishToMavenCentral(automaticRelease = true)
+    signAllPublications()
+
+    // Use your real artifactId here:
+    coordinates("io.github.bionictigers.axiom", "core", version.toString())
+
+    configure(
+        AndroidSingleVariantLibrary(
+            variant = "prodRelease",
+            sourcesJar = true,
+            publishJavadocJar = true
+        )
+    )
+
+    pom {
+        name.set("Axiom Core")
+        description.set("FTC robotics Android/Kotlin core library.")
+        url.set("https://github.com/bionictigers/axiom")
+        licenses { license {
+            name.set("Apache-2.0")
+            url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+        }}
+        developers { developer { id.set("bionictigers"); name.set("Bionic Tigers") } }
+        scm {
+            url.set("https://github.com/bionictigers/axiom")
+            connection.set("scm:git:https://github.com/bionictigers/axiom.git")
+            developerConnection.set("scm:git:ssh://git@github.com:bionictigers/axiom.git")
+        }
+    }
 }

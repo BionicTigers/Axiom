@@ -100,11 +100,9 @@ object Server {
         (newConnectionCallbacks as MutableList).add(callback)
     }
 
-    // Custom WebSocket subclass for handling connect/close/message events
     private class UpdatesWebSocket(handshakeRequest: IHTTPSession) : WebSocket(handshakeRequest) {
         private val job = SupervisorJob()
         private val serverScope = CoroutineScope(job + Dispatchers.IO)
-        private var keepAlive: Timer? = null
 
         private val outMessages = Channel<String>(capacity = 64)
 

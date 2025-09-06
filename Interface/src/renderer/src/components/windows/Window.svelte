@@ -22,7 +22,7 @@
     Renderer,
     containerRect,
     onFocus,
-    onClose,
+    onClose
   } = $props<{
     id?: string
     title?: string
@@ -211,6 +211,10 @@
     onClose?.()
   }
 
+  function toggleMinimize(): void {
+    minimized = !minimized
+  }
+
   function onGlobalPointerMove(e: PointerEvent): void {
     if (!(pendingDrag || dragging || resizing)) return
     // Require primary button to stay held during drag/resize
@@ -262,7 +266,7 @@
     onpointerdown={onTitlePointerDown}
     style={`border-bottom: ${!minimized ? 'none' : '2px solid #242e40'};`}
   >
-    <button class="minimize" onclick={() => (minimized = !minimized)} aria-label="Minimize">
+    <button class="minimize" onclick={toggleMinimize} aria-label="Minimize">
       {#if minimized}
         <DownArrowIcon />
       {:else}
@@ -275,7 +279,7 @@
 
   {#if !minimized}
     <div class="content">
-      <Renderer id={id} />
+      <Renderer {id} />
     </div>
   {/if}
 

@@ -1,11 +1,35 @@
+<!-- TODO: CLEAN THIS UP A LOT -->
 <script lang="ts">
-  import type { CommandState, CommandStateValue } from '../lib/types'
+  import {
+    defaultStateMetadata,
+    editState,
+    type CommandState,
+    type CommandStateValue,
+    type CommandStateValueBase,
+    type StateMetadata
+  } from '../lib/stores/schedulableStore'
   import Self from './StateValue.svelte'
 
-  let { label, value, seen = new WeakSet<object>() }: { label: string; value: CommandState; seen?: WeakSet<object> } = $props()
+  let {
+    label,
+    value,
+    stateMap,
+    path = label,
+    isRoot = true,
+    seen = [] as object[]
+  }: {
+    label: string
+    value: CommandState
+    stateMap?: { getState: (field: string) => [CommandStateValueBase, StateMetadata] }
+    path?: string
+    isRoot?: boolean
+    seen?: object[]
+  } = $props()
 
   let expanded = $state(false)
-  function toggle() { expanded = !expanded }
+  function toggle() {
+    expanded = !expanded
+  }
 
   function isLeaf(v: CommandState): v is CommandStateValue {
     return typeof v === 'object' && v !== null && 'value' in v && !Array.isArray(v)
@@ -15,20 +39,37 @@
 
   const isArrayNode = $derived(Array.isArray(value))
   const isLeafNode = $derived(isLeaf(value))
+  const statePair = $derived(isRoot && isLeafNode && stateMap ? stateMap.getState(label) : null)
+  const [_, meta] = $derived(statePair ?? [value, defaultStateMetadata])
+  const leafDisplayValue = $derived(
+    isLeafNode ? (statePair ? statePair[0] : (value as CommandStateValue).value) : null
+  )
+  const leafDisplayMeta = $derived(
+    isLeafNode ? (statePair ? statePair[1] : (value as CommandStateValue).metadata) : null
+  )
   const isGroup = $derived(isArrayNode || (!isLeafNode && typeof value === 'object'))
-  const isCircular = $derived(isGroup && typeof value === 'object' && value !== null && seen.has(value as unknown as object))
+  const isCircular = $derived(
+    isGroup &&
+      typeof value === 'object' &&
+      value !== null &&
+      seen.includes(value as unknown as object)
+  )
 
-  $effect(() => {
-    if (isGroup && typeof value === 'object' && value !== null && !seen.has(value as unknown as object)) {
-      seen.add(value as unknown as object)
-    }
-  })
+  // Pass a cloned set with current node added to children to avoid mutating parent set
+  const childSeen: object[] = $derived(
+    (() => {
+      if (isGroup && typeof value === 'object' && value !== null) {
+        return [...seen, value as unknown as object]
+      }
+      return seen
+    })()
+  )
 
   function priorityOf(node: CommandState): number {
     if (Array.isArray(node)) return 0
     if (isLeaf(node)) return typeof node.value === 'number' ? Number(node.value) : 0
     if (typeof node === 'object' && node !== null) {
-      const pr = (node as Record<string, CommandState>)["priority"]
+      const pr = (node as Record<string, CommandState>)['priority']
       if (pr && typeof pr === 'object' && 'value' in pr) {
         const pv = (pr as CommandStateValue).value
         return typeof pv === 'number' ? Number(pv) : 0
@@ -37,50 +78,72 @@
     return 0
   }
 
-  const sortedArray = $derived(Array.isArray(value) ? [...value].sort((a, b) => priorityOf(b) - priorityOf(a)) : null)
+  const sortedArray = $derived(
+    Array.isArray(value) ? [...value].sort((a, b) => priorityOf(b) - priorityOf(a)) : null
+  )
   // sortedEntries removed: objects render inline JSON when not arrays/leaves
 </script>
 
-<li class={isGroup ? "group" : "leaf"}>
-  {#if Array.isArray(value)}
-    <button class="row group-header" onclick={toggle} aria-expanded={expanded} title="Toggle">
-      <span class="chevron">{expanded ? "▾" : "▸"}</span>
-      <span class="key">{label}</span>
-      <span class="meta">[{value.length}]</span>
-    </button>
-    {#if isCircular}
-      <div class="row circular"><span class="chevron">⟲</span><span class="key">circular reference</span></div>
-    {:else if expanded}
-      <ul class="children">
-        {#each sortedArray ?? value as child, idx}
-          <Self label={`${idx}`} value={child} seen={seen} />
-        {/each}
-      </ul>
-    {/if}
-  {:else if isLeafNode}
-    <div class="row leaf-row">
-      <span class="key">{label}</span>
-      <span class="spacer"></span>
-      {#if value.readonly}
-        <span class="readonly">read-only</span>
-        <span class="val">{value.value}</span>
-      {:else}
-        <input class="input" type="text" value={String(value.value ?? '')} oninput={(e) => value.value = (e.currentTarget as HTMLInputElement).value} />
-      {/if}
-    </div>
-  {:else}
-    <div class="row leaf-row">
-      <span class="key">{label}</span>
-      <span class="spacer"></span>
+{#if !meta.hidden}
+  <li class={isGroup ? 'group' : 'leaf'}>
+    {#if Array.isArray(value)}
+      <button class="row group-header" onclick={toggle} aria-expanded={expanded} title="Toggle">
+        <span class="chevron">{expanded ? '▾' : '▸'}</span>
+        <span class="key">{label}</span>
+        <span class="meta">[{value.length}]</span>
+      </button>
       {#if isCircular}
-        <span class="readonly">circular</span>
-      {:else}
-        <span class="val">{JSON.stringify(value)}</span>
+        <div class="row circular">
+          <span class="chevron">⟲</span><span class="key">circular reference</span>
+        </div>
+      {:else if expanded}
+        <ul class="children">
+          {#each sortedArray ?? value as child, idx (idx)}
+            <Self
+              label={`${idx}`}
+              value={child}
+              {stateMap}
+              path={`${path}.${idx}`}
+              isRoot={false}
+              seen={childSeen}
+            />
+          {/each}
+        </ul>
       {/if}
-      <p>Non-leaf</p>
-    </div>
-  {/if}
-</li>
+    {:else if isLeafNode}
+      <div class="row leaf-row">
+        <span class="key">{label}</span>
+        <span class="spacer"></span>
+        {#if leafDisplayMeta?.readonly}
+          <span class="readonly">read-only</span>
+          <span class="val">{leafDisplayValue}</span>
+        {:else}
+          <input
+            class="input"
+            type="text"
+            value={String(leafDisplayValue ?? '')}
+            oninput={(e) => (value.value = (e.currentTarget as HTMLInputElement).value)}
+            onkeydown={(e) => {
+              if (e.key === 'Enter') {
+                editState(path, value.value as CommandStateValueBase)
+              }
+            }}
+          />
+        {/if}
+      </div>
+    {:else}
+      <div class="row leaf-row">
+        <span class="key">{label}</span>
+        <span class="spacer"></span>
+        {#if isCircular}
+          <span class="readonly">circular</span>
+        {:else}
+          <span class="val">{JSON.stringify(value)}</span>
+        {/if}
+      </div>
+    {/if}
+  </li>
+{/if}
 
 <style>
   .row {
@@ -138,10 +201,14 @@
     margin-left: auto;
   }
 
-  .spacer { flex: 1; }
+  .spacer {
+    flex: 1;
+  }
 
   .val {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+      monospace;
     background-color: rgb(43, 52, 70);
     padding: 2px 6px;
     border-radius: 6px;
@@ -164,6 +231,7 @@
     border: 1px solid rgb(43, 52, 70);
     border-radius: 6px;
     padding: 4px 6px;
-    min-width: 0;
+    min-width: 100px;
+    width: auto;
   }
 </style>

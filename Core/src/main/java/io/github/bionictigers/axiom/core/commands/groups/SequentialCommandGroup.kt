@@ -35,7 +35,7 @@ class SequentialCommandGroup(
                 Scheduler.schedule(currentCommand)
             } else if (it.currentIndex == commands.size - 1 && !currentCommand.running) {
                 println("Finished all commands in SequentialCommandGroup: $name")
-                return@action true
+                stop()
             }
 
             false

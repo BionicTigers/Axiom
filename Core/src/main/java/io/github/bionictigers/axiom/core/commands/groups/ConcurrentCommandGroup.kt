@@ -37,10 +37,10 @@ class ConcurrentCommandGroup(
 
             if (mode == ConcurrentFinishMode.ALL && allFinished) {
                 println("Finished all commands in ConcurrentCommandGroup: $name")
-                return@action true
+                stop()
             } else if (mode == ConcurrentFinishMode.ANY && anyFinished) {
                 println("Finished at least one command in ConcurrentCommandGroup: $name")
-                return@action true
+                stop()
             }
 
             false

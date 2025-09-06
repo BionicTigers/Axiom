@@ -19,7 +19,19 @@ export default app
     const original = con[level]
     con[level] = (...args: unknown[]) => {
       try {
-        ipc?.send('renderer-console', { level, args: args.map(String) })
+        ipc?.send('renderer-console', {
+          level,
+          args: args.map(arg => {
+            if (typeof arg === 'object' && arg !== null) {
+              try {
+                return JSON.stringify(arg)
+              } catch {
+                return String(arg)
+              }
+            }
+            return String(arg)
+          })
+        })
       } catch {}
       original(...args)
     }
