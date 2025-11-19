@@ -1,29 +1,27 @@
 package io.github.bionictigers.axiom.core.commands
 
-import android.annotation.TargetApi
-import android.os.Build
+import io.github.bionictigers.axiom.core.web.Hidden
 import java.util.UUID
 import kotlin.time.Duration
+import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 import kotlin.time.measureTime
 
-typealias BaseCommand = Command<BaseCommandState>
-
 private class CommandStopped : RuntimeException(null, null, false, false)
 
-class ExecutableDsl<T: BaseCommandState>(val command: Command<T>) {
+class ExecutableDsl<S>(val command: Command<S>) {
     fun stop(): Nothing {
         Scheduler.remove(command)
 
         throw CommandStopped()
     }
 
-    internal fun action(lambda: ExecutableDsl<T>.(T) -> Unit) {
-        lambda(command.state)
+    internal fun action(lambda: ExecutableDsl<S>.(S?, Command.Meta) -> Unit) {
+        lambda(command.state, command.meta)
     }
 
-    internal fun predicate(lambda: ExecutableDsl<T>.(T) -> Boolean): Boolean {
-        return lambda(command.state)
+    internal fun predicate(lambda: ExecutableDsl<S>.(S?, Command.Meta) -> Boolean): Boolean {
+        return lambda(command.state, command.meta)
     }
 }
 
@@ -36,24 +34,27 @@ class ExecutableDsl<T: BaseCommandState>(val command: Command<T>) {
  * @see System
  */
 @Suppress("unused")
-open class Command<T: BaseCommandState> internal constructor(
-    val name: String = "Unnamed Command",
-    val state: T,
-    private val interval: Duration? = null,
-    internal var parent: System? = null
+open class Command<S>
+internal constructor(
+        val name: String = "Unnamed Command",
+        val state: S?,
+        private val interval: Duration? = null,
+        internal var parent: System? = null
 ) {
-    val dependencies = ArrayList<Command<out BaseCommandState>>()
+    val dependencies = ArrayList<Command<*>>()
     val id = UUID.randomUUID().toString()
 
-    private var predicate: ExecutableDsl<T>.(T) -> Boolean = { true }
-    private var action: ExecutableDsl<T>.(T) -> Unit = {}
+    val meta = Meta(TimeSource.Monotonic.markNow(), TimeSource.Monotonic.markNow())
 
-    internal var onEnter: (T) -> Unit = {}
-    internal var onExit: (T) -> Unit = {}
+    private var predicate: ExecutableDsl<S>.(S?, Meta) -> Boolean = { _, _ -> true }
+    private var action: ExecutableDsl<S>.(S?, Meta) -> Unit = { _, _ -> }
+
+    internal var onEnter: (S?, Meta) -> Unit = { _, _ -> }
+    internal var onExit: (S?, Meta) -> Unit = { _, _ -> }
 
     internal var running = false
 
-    private val executableDsl = ExecutableDsl<T>(this)
+    private val executableDsl = ExecutableDsl(this)
 
     init {
         parent?.let { dependsOn(it) }
@@ -65,8 +66,8 @@ open class Command<T: BaseCommandState> internal constructor(
      * @param systems The systems that the command depends on.
      * @see System
      */
-    fun dependsOn(vararg systems: System): Command<T> {
-        dependencies.addAll(systems.mapNotNull { it.beforeRun })
+    fun dependsOn(vararg systems: System): Command<S> {
+        dependencies.addAll(systems.mapNotNull { it.update })
         return this
     }
 
@@ -76,8 +77,8 @@ open class Command<T: BaseCommandState> internal constructor(
      * @param systems The list of systems that the command depends on.
      * @see System
      */
-    fun dependsOnSystem(systems: List<System>): Command<T> {
-        dependencies.addAll(systems.mapNotNull { it.beforeRun })
+    fun dependsOnSystem(systems: List<System>): Command<S> {
+        dependencies.addAll(systems.mapNotNull { it.update })
         return this
     }
 
@@ -87,7 +88,7 @@ open class Command<T: BaseCommandState> internal constructor(
      * @param commands The commands that the command depends on.
      * @see Command
      */
-    fun dependsOn(vararg commands: Command<BaseCommandState>): Command<T> {
+    fun dependsOn(vararg commands: Command<S>): Command<S> {
         dependencies.addAll(commands)
         return this
     }
@@ -98,7 +99,7 @@ open class Command<T: BaseCommandState> internal constructor(
      * @param commands The list of commands that the command depends on.
      * @see Command
      */
-    fun dependsOn(commands: List<Command<BaseCommandState>>): Command<T> {
+    fun dependsOn(commands: List<Command<S>>): Command<S> {
         dependencies.addAll(commands)
         return this
     }
@@ -106,21 +107,52 @@ open class Command<T: BaseCommandState> internal constructor(
     /**
      * Assigns a function to be invoked during command execution.
      *
-     * @param lambda The function to be invoked. The value returned in the lambda determines if the command stays in the scheduler. True means it leaves the scheduler.
+     * @param lambda The function to be invoked. The value returned in the lambda determines if the
+     * command stays in the scheduler. Call stop() to remove the command from the scheduler.
      */
-    fun action(lambda: ExecutableDsl<T>.(T) -> Unit): Command<T> {
-        action = lambda
+    fun action(lambda: ExecutableDsl<S>.(Meta) -> Unit): Command<S> {
+        action = { _, meta -> lambda(meta) }
         return this
     }
 
     /**
-     * Executes the command if the predicate is true.
-     * If the predicate is false, the command will be removed from the scheduler.
+     * Assigns a function to be invoked during command execution.
      *
-     * @param lambda The predicate to be invoked. The value returned in the lambda determines if the command should be executed.
+     * @param lambda The function to be invoked. The value returned in the lambda determines if the
+     * command stays in the scheduler. Call stop() to remove the command from the scheduler.
      */
-    fun requires(lambda: ExecutableDsl<T>.(T) -> Boolean): Command<T> {
-        predicate = lambda
+    fun action(lambda: ExecutableDsl<S>.(S, Meta) -> Unit): Command<S> {
+        checkNotNull(state) {
+            "You cannot use stateful action without a state! Try action { meta -> ... }."
+        }
+        action = { s, meta -> lambda(s!!, meta) }
+        return this
+    }
+
+    /**
+     * Executes the command if the predicate is true. If the predicate is false, the command will be
+     * removed from the scheduler.
+     *
+     * @param lambda The predicate to be invoked. The value returned in the lambda determines if the
+     * command should be executed.
+     */
+    fun requires(lambda: ExecutableDsl<S>.(Meta) -> Boolean): Command<S> {
+        predicate = { _, meta -> lambda(meta) }
+        return this
+    }
+
+    /**
+     * Executes the command if the predicate is true. If the predicate is false, the command will be
+     * removed from the scheduler.
+     *
+     * @param lambda The predicate to be invoked. The value returned in the lambda determines if the
+     * command should be executed.
+     */
+    fun requires(lambda: ExecutableDsl<S>.(S, Meta) -> Boolean): Command<S> {
+        checkNotNull(state) {
+            "You cannot use stateful requires without a state! Try requires { meta -> ... }."
+        }
+        predicate = { s, meta -> lambda(s!!, meta) }
         return this
     }
 
@@ -129,8 +161,21 @@ open class Command<T: BaseCommandState> internal constructor(
      *
      * @param lambda The function to be invoked.
      */
-    fun enter(lambda: (T) -> Unit): Command<T> {
-        onEnter = lambda
+    fun enter(lambda: (Meta) -> Unit): Command<S> {
+        onEnter = { _, meta -> lambda(meta) }
+        return this
+    }
+
+    /**
+     * Executes when the command is entering the scheduler.
+     *
+     * @param lambda The function to be invoked.
+     */
+    fun enter(lambda: (S, Meta) -> Unit): Command<S> {
+        checkNotNull(state) {
+            "You cannot use stateful enter without a state! Try enter { meta -> ... }."
+        }
+        onEnter = { s, meta -> lambda(s!!, meta) }
         return this
     }
 
@@ -139,8 +184,21 @@ open class Command<T: BaseCommandState> internal constructor(
      *
      * @param lambda The function to be invoked.
      */
-    fun exit(lambda: (T) -> Unit): Command<T> {
-        onExit = lambda
+    fun exit(lambda: (Meta) -> Unit): Command<S> {
+        onExit = { _, meta -> lambda(meta) }
+        return this
+    }
+
+    /**
+     * Executes when the command is leaving the scheduler.
+     *
+     * @param lambda The function to be invoked.
+     */
+    fun exit(lambda: (S, Meta) -> Unit): Command<S> {
+        checkNotNull(state) {
+            "You cannot use stateful exit without a state! Try exit { meta -> ... }."
+        }
+        onExit = { s, meta -> lambda(s!!, meta) }
         return this
     }
 
@@ -150,35 +208,34 @@ open class Command<T: BaseCommandState> internal constructor(
      * @return True if the command was executed, false otherwise.
      */
     internal fun execute() {
-        state.deltaTime = state.lastExecutedAt?.elapsedNow() ?: Duration.ZERO
-        if (interval != null && state.deltaTime < interval) return
-        state.lastExecutedAt = TimeSource.Monotonic.markNow()
+        meta.deltaTime = meta.lastExecutedAt.elapsedNow()
+        if (interval != null && meta.deltaTime < interval) return
+        meta.lastExecutedAt = TimeSource.Monotonic.markNow()
 
         try {
             val time = measureTime {
-                if (executableDsl.predicate(predicate))
-                    executableDsl.action(action)
+                if (executableDsl.predicate(predicate)) executableDsl.action(action)
             }
 
-            state.executionTime = time
+            meta.executionTime = time
         } catch (e: CommandStopped) {
             return
         }
     }
 
-    internal fun internalEnter() {
-        onEnter(state)
-        state.enteredAt = TimeSource.Monotonic.markNow()
+    internal fun schedulerEnter() {
+        onEnter(state, meta)
+        meta.enteredAt = TimeSource.Monotonic.markNow()
+        meta.lastExecutedAt = TimeSource.Monotonic.markNow()
         running = true
     }
 
-    internal fun internalExit() {
-        onExit(state)
-        state.resetTimings()
+    internal fun schedulerExit() {
+        onExit(state, meta)
         running = false
     }
 
-    fun copy(name: String? = null, state: T? = null): Command<T> {
+    fun copy(name: String? = null, state: S? = null): Command<S> {
         val newCommand = Command(name ?: this.name, state ?: this.state, interval, parent)
         newCommand.predicate = predicate
         newCommand.action = action
@@ -189,4 +246,12 @@ open class Command<T: BaseCommandState> internal constructor(
     }
 
     companion object : CommandBuilder()
+
+    data class Meta(
+            @Hidden(false) var enteredAt: TimeMark,
+            @Hidden(false) var lastExecutedAt: TimeMark,
+            @Hidden(false) var executionTime: Duration = Duration.ZERO,
+            @Hidden var deltaTime: Duration = Duration.ZERO,
+            @Hidden internal var parent: System? = null,
+    )
 }

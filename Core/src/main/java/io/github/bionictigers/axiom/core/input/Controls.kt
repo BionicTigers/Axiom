@@ -93,7 +93,7 @@ class Controls<P>(
     }
 
 
-    override val beforeRun = Command.continuous("ControlsUpdate") {
+    override val update = Command.continuous("ControlsUpdate") {
         updateDigitalControls(gamepad1, digitalGP1)
         updateDigitalControls(gamepad2, digitalGP2)
         updateAnalogControls(gamepad1, analogGP1)

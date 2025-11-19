@@ -21,8 +21,8 @@ abstract class System {
     @Hidden
     open val dependencies: List<System> = emptyList()
 
-    open val beforeRun: Command<out BaseCommandState>? = null
-    open val afterRun: Command<out BaseCommandState>? = null
+    open val update: Command<*>? = null
+    open val apply: Command<*>? = null
 
     @Suppress("PropertyName")
     val SystemCommand = CommandBuilder(this)

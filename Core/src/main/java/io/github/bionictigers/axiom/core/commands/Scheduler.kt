@@ -25,19 +25,34 @@ import kotlin.collections.ArrayList
 import kotlin.collections.set
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KClass
-import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.KProperty
-import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
 import kotlin.time.Duration
 import kotlin.time.measureTime
 
-typealias GenericCommand = Command<out BaseCommandState>
+typealias GenericCommand = Command<*>
 
 private class SerializationUndefined(message: String) : RuntimeException(message, null, false, false)
+
+/**
+ * object Scheduler {
+ *     // Public state
+ *     var telemetry: Telemetry?
+ *     var loopDeltaTime: Duration
+ *
+ *     // Public API
+ *     fun schedule(...)
+ *     fun remove(...)
+ *     fun edit(...)
+ *     fun update()  // main loop
+ *     fun reset()
+ *
+ *     // Delegates to other components internally
+ * }
+ */
 
 object Scheduler {
     private val commands = ConcurrentHashMap<String, GenericCommand>()
@@ -46,7 +61,6 @@ object Scheduler {
     private val commandSnapshots: ConcurrentHashMap<String, Schedulable> = ConcurrentHashMap()
 
     private val systems = ConcurrentHashMap<String, System>()
-//    private val systemsToCommands = ConcurrentHashMap<Int, Int>()
 
     private val addQueue: ConcurrentLinkedQueue<GenericCommand> = ConcurrentLinkedQueue()
     private val removeQueue: ConcurrentLinkedQueue<GenericCommand> = ConcurrentLinkedQueue()
@@ -54,7 +68,7 @@ object Scheduler {
 
     var tick = 0L
 
-    val persistentStates = ConcurrentHashMap<String, BaseCommandState>()
+    val persistentStates = ConcurrentHashMap<String, Any>()
 
     var telemetry: Telemetry? = null
 
@@ -98,9 +112,9 @@ object Scheduler {
      */
     fun schedule(vararg systems: System) {
         schedule(systems.flatMap {
-            it.beforeRun?.parent = it
-            it.afterRun?.parent = it
-            listOfNotNull(it.beforeRun, it.afterRun)
+            it.update?.parent = it
+            it.apply?.parent = it
+            listOfNotNull(it.update, it.apply)
         })
         systems.forEach {
             Scheduler.systems[it.id] = it
@@ -113,10 +127,10 @@ object Scheduler {
         }
     }
 
-    inline fun <reified T : BaseCommandState> getPersistentState(
+    inline fun <reified T> getPersistentState(
         name: String,
         default: () -> T,
-    ): T = (persistentStates[name] as? T) ?: default().also { persistentStates[name] = it }
+    ): T = (persistentStates[name] as? T) ?: default().also { persistentStates[name] = it as Any }
 
     private fun serializeVariable(state: Any?, metadata: ValueMetadata): Any =
         when (state) {
@@ -172,7 +186,7 @@ object Scheduler {
             Schedulable(
                 it.name,
                 it.id,
-                serializeState(it.state) ?: mapOf(),
+                serializeState(it.state as Any) ?: mapOf(),
                 it.parent?.id,
                 ObjectType.Command
             )
@@ -188,12 +202,6 @@ object Scheduler {
         }
 
         return array
-    }
-
-    private fun internalAdd(command: GenericCommand) {
-        changed = true
-        commands[command.id] = command
-        command.internalEnter()
     }
 
     /**
@@ -212,18 +220,6 @@ object Scheduler {
 
             removeQueue.add(it)
         }
-    }
-
-    private fun internalRemove(command: GenericCommand) {
-        changed = true
-        commands.remove(command.id)
-        command.dependencies.forEach { dep ->
-            if (dep !in commands.values) {
-                return
-            }
-            dep.dependencies.remove(command)
-        }
-        command.internalExit()
     }
 
     private fun sort() {
@@ -287,7 +283,7 @@ object Scheduler {
         val store = if (isCommand) commands else systems
         val schedulable = store[id] ?: return
 
-        var obj: Any = if (isCommand) (schedulable as GenericCommand).state else schedulable
+        var obj: Any = if (isCommand) (schedulable as GenericCommand).state!! else schedulable
         val segments = parts.subList(2, parts.size)
 
         try {
@@ -348,9 +344,9 @@ object Scheduler {
             RobotLog.ww("Axiom", "Unable to modify $path: no property '${e.message}' on '${obj::class.simpleName}'.")
         } catch (e: IllegalStateException) {
             RobotLog.ww("Axiom", "Unable to modify $path: ${e.message}")
-        } catch (e: NumberFormatException) {
+        } catch (_: NumberFormatException) {
             RobotLog.ww("Axiom", "Unable to set $path to $rawValue: type conversion failed.")
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             RobotLog.ww("Axiom", "Unable to set $path to $rawValue: incompatible type.")
         } catch (e: Exception) {
             RobotLog.ww("Axiom", "Unable to modify $path: ${e::class.simpleName}: ${e.message}")
@@ -467,7 +463,8 @@ object Scheduler {
     }
 }
 
-inline fun <reified T : BaseCommandState> persistentState(
+@Suppress("unused")
+inline fun <reified T> persistentState(
     name: String,
     noinline default: () -> T
 ): ReadWriteProperty<Any?, T> = object : ReadWriteProperty<Any?, T> {
@@ -483,7 +480,7 @@ inline fun <reified T : BaseCommandState> persistentState(
 
     override fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
         cache = value
-        persistentStates[name] = value
+        persistentStates[name] = value as Any
     }
 }
 
