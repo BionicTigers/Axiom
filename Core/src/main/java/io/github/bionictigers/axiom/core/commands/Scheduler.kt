@@ -136,7 +136,9 @@ object Scheduler {
         when (state) {
             is Number, is String, is Char, is Boolean -> Value(state, metadata)
             is Duration -> Value(state.inWholeMilliseconds, metadata)
-            is Collection<*> -> state.map { return@map serializeVariable(it!!, metadata.copy(false)) }
+            is Collection<*> -> state.map { return@map serializeVariable(it!!, metadata.copy(
+                readOnly = false
+            )) }
             is Array<*> -> state.map { return@map serializeVariable(it!!, metadata.copy(false)) }
             null -> Value(null, metadata)
             else -> {
@@ -375,7 +377,7 @@ object Scheduler {
             }
         }
 
-        val removals = commandSnapshots.keys.subtract(current.map { it.id })
+        val removals = commandSnapshots.keys.subtract(current.map { it.id }.toSet())
         removals.forEach { commandSnapshots.remove(it) }
 
         return Pair(deltas, removals)

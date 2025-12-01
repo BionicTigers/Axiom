@@ -8,5 +8,6 @@ package io.github.bionictigers.axiom.core.scheduler
  *     fun calculateStateDelta(...): List<Pair<String, Map<String, Any?>>>
  * }
  */
-object DeltaResolver {
+internal object DeltaResolver {
+
 }

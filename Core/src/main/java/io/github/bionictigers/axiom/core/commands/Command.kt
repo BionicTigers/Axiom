@@ -1,6 +1,7 @@
 package io.github.bionictigers.axiom.core.commands
 
 import io.github.bionictigers.axiom.core.web.Hidden
+import java.lang.ref.WeakReference
 import java.util.UUID
 import kotlin.time.Duration
 import kotlin.time.TimeMark
@@ -41,7 +42,7 @@ internal constructor(
         private val interval: Duration? = null,
         internal var parent: System? = null
 ) {
-    val dependencies = ArrayList<Command<*>>()
+    val dependencies = ArrayList<WeakReference<Command<*>>>()
     val id = UUID.randomUUID().toString()
 
     val meta = Meta(TimeSource.Monotonic.markNow(), TimeSource.Monotonic.markNow())
@@ -67,7 +68,7 @@ internal constructor(
      * @see System
      */
     fun dependsOn(vararg systems: System): Command<S> {
-        dependencies.addAll(systems.mapNotNull { it.update })
+        dependencies.addAll(systems.mapNotNull { it.update.toWeakReference() })
         return this
     }
 
@@ -78,7 +79,7 @@ internal constructor(
      * @see System
      */
     fun dependsOnSystem(systems: List<System>): Command<S> {
-        dependencies.addAll(systems.mapNotNull { it.update })
+        dependencies.addAll(systems.mapNotNull { it.update.toWeakReference() })
         return this
     }
 
@@ -89,7 +90,7 @@ internal constructor(
      * @see Command
      */
     fun dependsOn(vararg commands: Command<S>): Command<S> {
-        dependencies.addAll(commands)
+        dependencies.addAll(commands.mapNotNull { it.toWeakReference() })
         return this
     }
 
@@ -100,7 +101,7 @@ internal constructor(
      * @see Command
      */
     fun dependsOn(commands: List<Command<S>>): Command<S> {
-        dependencies.addAll(commands)
+        dependencies.addAll(commands.mapNotNull { it.toWeakReference() })
         return this
     }
 
@@ -248,10 +249,15 @@ internal constructor(
     companion object : CommandBuilder()
 
     data class Meta(
-            @Hidden(false) var enteredAt: TimeMark,
-            @Hidden(false) var lastExecutedAt: TimeMark,
-            @Hidden(false) var executionTime: Duration = Duration.ZERO,
-            @Hidden var deltaTime: Duration = Duration.ZERO,
-            @Hidden internal var parent: System? = null,
+        @Hidden(false) var enteredAt: TimeMark,
+        @Hidden(false) var lastExecutedAt: TimeMark,
+        @Hidden(false) var executionTime: Duration = Duration.ZERO,
+        @Hidden var deltaTime: Duration = Duration.ZERO,
+        @Hidden internal var parent: System? = null,
     )
+}
+
+private fun <T> T?.toWeakReference(): WeakReference<T>? {
+    if (this == null) return null
+    return WeakReference(this)
 }

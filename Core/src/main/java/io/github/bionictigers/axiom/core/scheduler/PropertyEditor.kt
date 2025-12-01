@@ -8,5 +8,16 @@ package io.github.bionictigers.axiom.core.scheduler
  *     private fun setProperty(...)
  * }
  */
-object PropertyEditor {
+internal object PropertyEditor {
+    fun edit(path: String, value: Any, commands: Map<String, Any>, systems: Map<String, Any>) {
+
+    }
+
+    private fun navigatePath() {
+
+    }
+
+    private fun setProperty() {
+
+    }
 }
