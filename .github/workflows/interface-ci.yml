@@ -89,6 +89,8 @@ jobs:
         run: bun run ${{ matrix.build_cmd }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ELECTRON_CACHE: ${{ runner.temp }}/electron-cache
+          ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/electron-builder-cache
 
       - name: Upload artifacts (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -98,7 +100,6 @@ jobs:
           path: |
             Interface/dist/*.AppImage
             Interface/dist/*.deb
-            Interface/dist/*.snap
           if-no-files-found: ignore
 
       - name: Upload artifacts (Windows)
