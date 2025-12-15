@@ -136,7 +136,7 @@ internal constructor(
 
     /**
      * Executes the command if the predicate is true. If the predicate is false, the command will be
-     * removed from the scheduler.
+     * not execute.
      *
      * @param lambda The predicate to be invoked. The value returned in the lambda determines if the
      * command should be executed.

@@ -1,10 +1,6 @@
 import { get, writable, derived } from 'svelte/store'
 
-import {
-  schedulableStore,
-  type CommandStateValue,
-  type Schedulable
-} from './schedulableStore'
+import { schedulableStore, type CommandStateValue, type Schedulable } from './schedulableStore'
 import { schedulerDetails } from './schedulerDetails'
 import type { UUID } from '../types'
 
@@ -153,12 +149,7 @@ export function getNumericFields(schedulable: Schedulable): string[] {
   const fields: string[] = []
 
   for (const [field, state] of stateMap) {
-    if (
-      typeof state === 'object' &&
-      state !== null &&
-      'value' in state &&
-      !Array.isArray(state)
-    ) {
+    if (typeof state === 'object' && state !== null && 'value' in state && !Array.isArray(state)) {
       const val = (state as CommandStateValue).value
       if (typeof val === 'number') {
         fields.push(field)
@@ -256,12 +247,7 @@ schedulerDetails.subscribe((data) => {
       if (schedulable) {
         const stateMap = get(schedulable.state)
         const state = stateMap.get(id.field)
-        if (
-          state &&
-          typeof state === 'object' &&
-          'value' in state &&
-          !Array.isArray(state)
-        ) {
+        if (state && typeof state === 'object' && 'value' in state && !Array.isArray(state)) {
           const v = (state as CommandStateValue).value
           if (typeof v === 'number') {
             value = v

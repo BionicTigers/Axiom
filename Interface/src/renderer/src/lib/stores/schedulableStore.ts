@@ -1,7 +1,7 @@
-import { get, writable, type Writable } from 'svelte/store';
+import { get, writable, type Writable } from 'svelte/store'
 
-import { registerNetworkEvent } from '../networkRegistry';
-import type { UUID } from '../types';
+import { registerNetworkEvent } from '../networkRegistry'
+import type { UUID } from '../types'
 
 // Types now sourced from ../types
 
@@ -154,7 +154,7 @@ export function editState(path: string, value: CommandStateValueBase) {
 }
 
 export const schedulableStore = writable<Map<UUID, Schedulable>>(new Map())
-export const schedulableOrderStore = writable<Array<UUID>>(new Array())
+export const schedulableOrderStore = writable<Array<UUID>>([])
 
 registerNetworkEvent('schedulable_initial', updateSchedulablesFromInitial)
 registerNetworkEvent('schedulable_update', updateSchedulables)

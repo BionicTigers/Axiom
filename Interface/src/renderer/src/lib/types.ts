@@ -1,7 +1,7 @@
 export type BaseResponse = {
   name: string
   tick: number
-  data: any
+  data: unknown
 }
 
 export type UUID = string

@@ -1,5 +1,5 @@
-import { get, writable } from "svelte/store";
-import type { Component } from "svelte";
+import { get, writable } from 'svelte/store'
+import type { Component } from 'svelte'
 
 export type Win = {
   id: string
@@ -9,7 +9,7 @@ export type Win = {
   w: number
   h: number
   z: number
-  component: Component<{win: Win}>
+  component: Component<{ win: Win }>
   minW?: number
   minH?: number
   maxW?: number

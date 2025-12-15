@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'events'
 
 export class AutoWebsocket extends EventEmitter {
   private ws: WebSocket | null = null

@@ -1,6 +1,6 @@
-import { writable } from 'svelte/store';
+import { writable } from 'svelte/store'
 
-import { registerNetworkEvent } from '../networkRegistry';
+import { registerNetworkEvent } from '../networkRegistry'
 
 export enum NotificationType {
   INFO = 'INFO',
@@ -44,4 +44,3 @@ export function removeNotification(id: string) {
 registerNetworkEvent('notification', (data: NotificationData, tick: number) => {
   addNotification(data, tick)
 })
-

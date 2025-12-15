@@ -1,7 +1,7 @@
-import { electronAPI } from '@electron-toolkit/preload';
-import { contextBridge, ipcRenderer } from 'electron';
+import { electronAPI } from '@electron-toolkit/preload'
+import { contextBridge, ipcRenderer } from 'electron'
 
-import { AutoWebsocket } from './AutoWebsocket';
+import { AutoWebsocket } from './AutoWebsocket'
 
 const AXIOM_URL = 'ws://localhost:10464'
 

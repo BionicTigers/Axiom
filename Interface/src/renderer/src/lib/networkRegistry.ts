@@ -1,6 +1,9 @@
-export const networkRegistry: { [key: string]: (data: any, tick: number) => void } = {}
+export const networkRegistry: { [key: string]: (data: unknown, tick: number) => void } = {}
 
-export function registerNetworkEvent(name: string, callback: (data: any, tick: number) => void) {
+export function registerNetworkEvent(
+  name: string,
+  callback: (data: unknown, tick: number) => void
+) {
   networkRegistry[name] = callback
 }
 

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import CommandIcon from '~icons/material-symbols/format-list-bulleted';
-  import RobotIcon from '~icons/material-symbols/robot-2-rounded';
+  import CommandIcon from '~icons/material-symbols/format-list-bulleted'
+  import RobotIcon from '~icons/material-symbols/robot-2-rounded'
   import GamepadIcon from '~icons/material-symbols/gamepad-rounded'
   import MapIcon from '~icons/material-symbols/map'
   import EyeIcon from '~icons/solar/eye-bold'
@@ -25,18 +25,21 @@
     return () => document.removeEventListener('mousedown', handleDocClick, true)
   })
 
-  const commandOptions = [{ label: 'States', component: registry.States }, { label: 'Scheduler', component: registry.Scheduler }]
+  const commandOptions = [
+    { label: 'States', component: registry.States },
+    { label: 'Scheduler', component: registry.Scheduler }
+  ]
 
   const gamepadOptions = [{ label: 'Gamepad Overview', component: registry.GamepadViewer }]
 
   const hardwareOptions = [
     { label: 'Hardware Viewer', component: registry.HardwareViewer },
-    { label: 'Config', component: registry.Config },
+    { label: 'Config', component: registry.Config }
   ]
 
   const robotOptions = [
     { label: 'Control', component: registry.Control },
-    { label: 'Telemetry', component: registry.Telemetry }, 
+    { label: 'Telemetry', component: registry.Telemetry }
   ]
 
   const viewerOptions = [{ label: 'Graph', component: registry.Graph }]

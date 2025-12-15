@@ -11,7 +11,7 @@
   let {
     data = [[]],
     series = [] as SeriesMeta[],
-    windowSeconds = 10
+    windowSeconds: _windowSeconds = 10
   }: {
     data: (number | null)[][]
     series: SeriesMeta[]
@@ -24,7 +24,6 @@
   // Theme colors matching the app
   const GRID_COLOR = 'rgba(100, 100, 100, 0.3)'
   const AXIS_COLOR = 'rgb(150, 150, 150)'
-  const BG_COLOR = 'transparent'
 
   function buildOptions(width: number, height: number): uPlot.Options {
     const seriesOpts: uPlot.Series[] = [
@@ -91,18 +90,6 @@
       plot.destroy()
       plot = null
     }
-  }
-
-  function updateData(): void {
-    if (!plot) return
-
-    // If series count changed, recreate the plot
-    if (plot.series.length !== series.length + 1) {
-      createPlot()
-      return
-    }
-
-    plot.setData(data as uPlot.AlignedData)
   }
 
   function handleResize(): void {
@@ -172,4 +159,3 @@
     cursor: crosshair;
   }
 </style>
-

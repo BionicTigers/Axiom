@@ -17,9 +17,9 @@
     }
 }
  */
-import { writable } from 'svelte/store';
+import { writable } from 'svelte/store'
 
-import { registerNetworkEvent } from '../networkRegistry';
+import { registerNetworkEvent } from '../networkRegistry'
 
 export type SchedulerDetails = {
   tick: number

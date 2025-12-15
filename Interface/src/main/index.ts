@@ -1,20 +1,26 @@
-import { electronApp, is, optimizer } from '@electron-toolkit/utils';
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
-import { join } from 'path';
+import { electronApp, is, optimizer } from '@electron-toolkit/utils'
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { join } from 'path'
 
-import icon from '../../resources/icon.ico?asset';
-import iconOther from '../../resources/icon.png?asset';
+import icon from '../../resources/icon.ico?asset'
+import iconOther from '../../resources/icon.png?asset'
 
 const version = app.getVersion()
 
 // Track renderer readiness and queue messages arriving before listeners are attached
 let rendererReady = false
 let mainWebContents: Electron.WebContents | null = null
-const pendingAxiomMessages: Array<{ channel: 'axiom-connected' | 'axiom-disconnected' | 'axiom-data'; payload?: unknown }> = []
+const pendingAxiomMessages: Array<{
+  channel: 'axiom-connected' | 'axiom-disconnected' | 'axiom-data'
+  payload?: unknown
+}> = []
 
-function sendToRenderer(channel: 'axiom-connected' | 'axiom-disconnected' | 'axiom-data', payload?: unknown): void {
+function sendToRenderer(
+  channel: 'axiom-connected' | 'axiom-disconnected' | 'axiom-data',
+  payload?: unknown
+): void {
   if (rendererReady && mainWebContents) {
-    mainWebContents.send(channel, payload as any)
+    mainWebContents.send(channel, payload)
   } else {
     pendingAxiomMessages.push({ channel, payload })
   }
@@ -136,7 +142,7 @@ app.whenReady().then(() => {
     console.log('[main] renderer-ready; flushing', pendingAxiomMessages.length, 'queued messages')
     // Flush any queued messages in order
     for (const { channel, payload } of pendingAxiomMessages) {
-      event.sender.send(channel, payload as any)
+      event.sender.send(channel, payload)
     }
     pendingAxiomMessages.length = 0
   })

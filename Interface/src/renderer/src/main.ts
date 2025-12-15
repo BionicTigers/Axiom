@@ -1,7 +1,7 @@
-import { mount } from 'svelte';
+import { mount } from 'svelte'
 
-import './assets/main.css';
-import App from './App.svelte';
+import './assets/main.css'
+import App from './App.svelte'
 
 const app = mount(App, {
   target: document.getElementById('app')!
@@ -21,18 +21,20 @@ export default app
       try {
         ipc?.send('renderer-console', {
           level,
-          args: args.map(arg => {
+          args: args.map((arg) => {
             if (typeof arg === 'object' && arg !== null) {
               try {
                 return JSON.stringify(arg)
-              } catch {
+              } catch (_e) {
                 return String(arg)
               }
             }
             return String(arg)
           })
         })
-      } catch {}
+      } catch (_e) {
+        /* ignore IPC errors */
+      }
       original(...args)
     }
   }
@@ -44,7 +46,9 @@ export default app
         level: 'error',
         args: [String(e.error || e.message || 'Unknown error')]
       })
-    } catch {}
+    } catch (_e) {
+      /* ignore IPC errors */
+    }
   })
   window.addEventListener('unhandledrejection', (e) => {
     try {
@@ -52,6 +56,8 @@ export default app
         (e.reason && (e.reason.stack || e.reason.message || String(e.reason))) ||
         'Unhandled rejection'
       ipc?.send('renderer-console', { level: 'error', args: [String(reason)] })
-    } catch {}
+    } catch (_e) {
+      /* ignore IPC errors */
+    }
   })
 })()

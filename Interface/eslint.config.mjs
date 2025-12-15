@@ -1,6 +1,6 @@
-import eslintConfigPrettier from '@electron-toolkit/eslint-config-prettier';
-import tseslint from '@electron-toolkit/eslint-config-ts';
-import eslintPluginSvelte from 'eslint-plugin-svelte';
+import eslintConfigPrettier from '@electron-toolkit/eslint-config-prettier'
+import tseslint from '@electron-toolkit/eslint-config-ts'
+import eslintPluginSvelte from 'eslint-plugin-svelte'
 
 export default tseslint.config(
   { ignores: ['**/node_modules', '**/dist', '**/out'] },

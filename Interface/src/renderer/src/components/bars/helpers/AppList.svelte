@@ -2,7 +2,7 @@
   import type { Component } from 'svelte'
   import * as windowsStore from '../../../lib/stores/windows'
 
-  type Option = { label: string, component: Component }
+  type Option = { label: string; component: Component }
 
   let {
     title,

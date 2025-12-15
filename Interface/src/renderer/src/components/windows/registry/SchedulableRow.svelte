@@ -2,11 +2,8 @@
   import { getCommandExecutionTimeColor } from '../../../lib/color'
   import { schedulableStore, type Schedulable } from '../../../lib/stores/schedulableStore'
 
-  let {
-    itemId,
-    schedulable,
-    index
-  }: { itemId: string; schedulable: Schedulable; index: number } = $props()
+  let { itemId, schedulable, index }: { itemId: string; schedulable: Schedulable; index: number } =
+    $props()
 
   let stateStore = schedulable.state
   const executionTime = $derived(
@@ -17,9 +14,7 @@
     })()
   )
 
-  const parent = $derived(
-    schedulable.parent ? $schedulableStore.get(schedulable.parent) : null
-  )
+  const parent = $derived(schedulable.parent ? $schedulableStore.get(schedulable.parent) : null)
 </script>
 
 <li class="row">
