@@ -6,12 +6,16 @@ on:
     paths:
       - 'Interface/**'
       - '.github/workflows/interface-ci.yml'
+    tags:
+      - 'v*'
   pull_request:
     branches: [main, master]
     paths:
       - 'Interface/**'
       - '.github/workflows/interface-ci.yml'
   workflow_dispatch:
+
+# Note: Tags ignore the paths filter in GitHub Actions, so v* tags will trigger the full workflow
 
 defaults:
   run:
