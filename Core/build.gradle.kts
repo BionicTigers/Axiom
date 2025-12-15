@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "io.github.bionictigers"
-version = "0.1.0"
+version = "0.2.0"
 
 java {
     toolchain {
@@ -52,7 +52,7 @@ android {
     }
 }
 
-val ftcVersion = "10.2.0"
+val ftcVersion = "11.0.0"
 
 dependencies {
     mockImplementation(project(":MockFTC"))
