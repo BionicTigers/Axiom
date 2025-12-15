@@ -36,8 +36,6 @@ class SequentialCommandGroup(
                 println("Finished all commands in SequentialCommandGroup: $name")
                 stop()
             }
-
-            false
         }
     }
 }

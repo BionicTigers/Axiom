@@ -48,10 +48,10 @@ internal object PropertyEditor {
                 "No schedulable found with id $id in ${type}s\nPlease resynchronize.",
                 Notification.Type.ERROR
             )
-            RobotLog.ww("Axiom", "PropertyEditor: No schedulable found with id $id")
+            throw NoSuchElementException("No schedulable found with id $id in ${type}s")
         }
 
-        return Pair(schedulable as Schedulable, type == "command")
+        return Pair(schedulable, type == "command")
     }
 
     private fun resolveLeaf(root: Any, segments: List<String>): Pair<Any, String> {
