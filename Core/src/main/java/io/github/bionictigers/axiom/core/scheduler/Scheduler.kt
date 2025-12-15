@@ -1,13 +1,17 @@
 package io.github.bionictigers.axiom.core.scheduler
 
+import com.qualcomm.robotcore.util.RobotLog
 import io.github.bionictigers.axiom.core.commands.Command
 import io.github.bionictigers.axiom.core.commands.GenericCommand
 import io.github.bionictigers.axiom.core.commands.System
 import io.github.bionictigers.axiom.core.web.Server
 import io.github.bionictigers.axiom.core.web.serializable.SchedulablesInitial
 import io.github.bionictigers.axiom.core.web.serializable.SchedulablesUpdate
+import io.github.bionictigers.axiom.core.web.serializable.SchedulerDetails
 import io.github.bionictigers.axiom.core.web.serializable.SchedulerOrder
 import io.github.bionictigers.axiom.core.web.serializable.StateUpdate
+import kotlin.time.DurationUnit
+import kotlin.time.TimeSource
 import kotlin.time.measureTime
 
 object Scheduler {
@@ -54,6 +58,7 @@ object Scheduler {
     }
 
     fun edit(path: String, value: String) {
+        RobotLog.dd("Axiom", "Edit: $path = $value")
         if (SchedulerState.inUpdateCycle) {
             SchedulerState.editQueue.add(path to value)
         } else {
@@ -107,6 +112,14 @@ object Scheduler {
         } finally {
             SchedulerState.tick++
             SchedulerState.inUpdateCycle = false
+
+            Server.send(
+                SchedulerDetails(
+                    SchedulerState.tick,
+                    SchedulerState.deltaTime.toDouble(DurationUnit.SECONDS),
+                    java.lang.System.currentTimeMillis() / 1000.0
+                )
+            )
         }
     }
 }

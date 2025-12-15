@@ -78,11 +78,11 @@ internal object SchedulerState {
                 PropertyEditor.edit(path, value)
             } catch (e: Exception) {
                 RobotLog.ww("Axiom", e, "Failed to process edit for path: $path")
-                Server.send(Notification(
+                Notification.send(
                     "Edit Failure",
                     "Failed to process edit for path: $path\nPlease resynchronize.",
-                    Notification.Type.WARNING
-                ))
+                    Notification.Type.ERROR
+                )
             }
         }
     }

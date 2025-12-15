@@ -1,7 +1,6 @@
 package io.github.bionictigers.axiom.core.scheduler
 
 import io.github.bionictigers.axiom.core.commands.Command
-import io.github.bionictigers.axiom.core.commands.System
 import io.github.bionictigers.axiom.core.web.Display
 import io.github.bionictigers.axiom.core.web.Editable
 import io.github.bionictigers.axiom.core.web.Hidden
@@ -11,9 +10,7 @@ import io.github.bionictigers.axiom.core.web.serializable.Schedulable
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
-import java.util.concurrent.ConcurrentHashMap
 
 class DeltaResolverTest {
 
@@ -75,7 +72,7 @@ class DeltaResolverTest {
         
         val counterVal = stateMap["counter"] as Value
         assertEquals(0, counterVal.value)
-        assertFalse(counterVal.metadata!!.readOnly) // Editable defaults to true for vars unless marked otherwise? 
+        assertFalse(counterVal.metadata!!.readonly) // Editable defaults to true for vars unless marked otherwise?
         // Actually code says: prop.findAnnotation<Editable>() == null -> readOnly = true?
         // Let's check logic: readOnly = metadata.readOnly || (prop.findAnnotation<Editable>() == null)
         // Wait, prop.findAnnotation<Editable>() == null means it IS readOnly (logic: readOnly = true if Editable missing?)
@@ -177,10 +174,10 @@ class DeltaResolverTest {
         // Child "fixed" is not @Editable, so it should be read-only.
         
         val counterVal = innerMap["counter"] as Value
-        assertFalse(counterVal.metadata!!.readOnly)
+        assertFalse(counterVal.metadata!!.readonly)
         
         val fixedVal = innerMap["fixed"] as Value
-        assertTrue(fixedVal.metadata!!.readOnly)
+        assertTrue(fixedVal.metadata!!.readonly)
     }
     
     // Helper to create Command via reflection since constructor is internal

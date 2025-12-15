@@ -35,17 +35,19 @@ internal object PropertyEditor {
     }
 
     private fun resolveRoot(type: String, id: String): Pair<Schedulable, Boolean> {
+        val type = type.lowercase()
+
         check(type == "command" || type == "system") {
             "Invalid schedulable type: $type"
         }
 
         val store = if (type == "command") SchedulerState.commands else SchedulerState.systems
         val schedulable = store[id] ?: run {
-            Server.send(Notification(
+            Notification.send(
                 "Edit Failure",
                 "No schedulable found with id $id in ${type}s\nPlease resynchronize.",
-                Notification.Type.WARNING
-            ))
+                Notification.Type.ERROR
+            )
             RobotLog.ww("Axiom", "PropertyEditor: No schedulable found with id $id")
         }
 

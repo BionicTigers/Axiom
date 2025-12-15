@@ -1,7 +1,7 @@
 package io.github.bionictigers.axiom.core.web
 
 data class ValueMetadata(
-    val readOnly: Boolean = false,
+    val readonly: Boolean = false,
     val priority: Int = 0,
     val hidden: Boolean? = null
 )
@@ -14,7 +14,7 @@ data class Value(
         with(metadata) {
             buildMap {
                 put("value", value)
-                put("readOnly", readOnly)
+                put("readOnly", readonly)
                 put("priority", priority)
                 putNotNull("hidden", hidden)
             }

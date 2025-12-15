@@ -40,10 +40,11 @@ typealias GenericCommand = Command<*>
 @Suppress("unused")
 open class Command<S>
 internal constructor(
-        val name: String = "Unnamed Command",
-        val state: S?,
-        private val interval: Duration? = null,
-        internal var parent: System? = null
+    @Hidden
+    val name: String = "Unnamed Command",
+    val state: S?,
+    private val interval: Duration? = null,
+    internal var parent: System? = null
 ) : Schedulable {
     override val id = UUID.randomUUID().toString()
     val dependencies = ArrayList<WeakReference<Command<*>>>()

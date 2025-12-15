@@ -1,6 +1,7 @@
 package io.github.bionictigers.axiom.core.web.serializable
 
 import io.github.bionictigers.axiom.core.web.Serializable
+import io.github.bionictigers.axiom.core.web.Server
 
 data class Notification(
     val title: String,
@@ -28,5 +29,11 @@ data class Notification(
         INFO,
         WARNING,
         ERROR
+    }
+
+    companion object {
+        fun send(title: String, message: String, type: Type, isModal: Boolean = false) {
+            Server.send(Notification(title, message, type, isModal))
+        }
     }
 }

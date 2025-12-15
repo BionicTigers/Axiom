@@ -29,7 +29,8 @@ internal data class SchedulerOrder(
 
 internal data class SchedulerDetails(
     val tick: Long,
-    val executionTime: Long,
+    val executionTime: Double,
+    val currentTime: Double
 ) : Serializable {
     override fun serialize(tick: Long): Map<String, Any?> {
         return mapOf(
@@ -37,7 +38,8 @@ internal data class SchedulerDetails(
             "tick" to tick,
             "data" to mapOf(
                 "tick" to this.tick,
-                "executionTime" to executionTime
+                "executionTime" to executionTime,
+                "currentTime" to currentTime
             )
         )
     }
