@@ -11,6 +11,13 @@ import java.util.HashSet
  * }
  */
 internal object DependencyResolver {
+    /**
+     * Perform a topological sort on the given commands based on their dependencies.
+     *
+     * @param commands A map of command IDs to GenericCommand instances.
+     * @return A list of GenericCommand instances sorted in dependency order.
+     * @throws IllegalStateException if a cyclic dependency is detected.
+     */
     fun sort(commands: Map<String, GenericCommand>): List<GenericCommand> {
         val visited = HashSet<GenericCommand>()
         val onPath = HashSet<GenericCommand>()
@@ -33,6 +40,15 @@ internal object DependencyResolver {
         return sortedCommands
     }
 
+    /**
+     * Depth-first search helper function for topological sorting.
+     *
+     * @param node The current GenericCommand node being visited.
+     * @param visited A set of already visited nodes.
+     * @param onPath A set of nodes currently on the recursion path (for cycle detection).
+     * @param out The output list to store the sorted nodes.
+     * @throws IllegalStateException if a cyclic dependency is detected.
+     */
     private fun dfs(
         node: GenericCommand,
         visited: MutableSet<GenericCommand>,

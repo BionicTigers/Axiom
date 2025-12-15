@@ -42,6 +42,9 @@ android {
     // Configure test options
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        unitTests.all {
+            it.useJUnitPlatform()
+        }
     }
 }
 
@@ -68,6 +71,10 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation(kotlin("reflect"))
+
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+    testImplementation("io.mockk:mockk:1.13.7")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:1.9.22")
 }
 
 private fun DependencyHandlerScope.mockImplementation(dependency: ProjectDependency) {

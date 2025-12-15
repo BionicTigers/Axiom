@@ -9,14 +9,14 @@ import java.util.UUID
  *
  * All commands should be associated with at least one system.
  *
- * @see Scheduler
+ * @see io.github.bionictigers.axiom.core.scheduler.Scheduler
  * @see Command
  */
-abstract class System {
+abstract class System : Schedulable {
     @Hidden
     abstract val name: String
     @Hidden
-    val id: String = UUID.randomUUID().toString()
+    override val id: String = UUID.randomUUID().toString()
 
     @Hidden
     open val dependencies: List<System> = emptyList()

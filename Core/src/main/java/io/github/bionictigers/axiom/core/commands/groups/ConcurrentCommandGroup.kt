@@ -1,8 +1,7 @@
 package io.github.bionictigers.axiom.core.commands.groups
 
-import io.github.bionictigers.axiom.core.commands.BaseCommandState
 import io.github.bionictigers.axiom.core.commands.Command
-import io.github.bionictigers.axiom.core.commands.Scheduler
+import io.github.bionictigers.axiom.core.scheduler.Scheduler
 
 enum class ConcurrentFinishMode {
     ALL,
@@ -12,7 +11,7 @@ enum class ConcurrentFinishMode {
 data class ConcurrentCommandGroupState(
     val commands: List<String>,
     val mode: ConcurrentFinishMode,
-) : BaseCommandState()
+)
 
 class ConcurrentCommandGroup(
     name: String = "SequentialCommandGroup",

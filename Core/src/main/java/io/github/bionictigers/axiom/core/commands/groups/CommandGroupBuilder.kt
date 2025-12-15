@@ -1,6 +1,5 @@
 package io.github.bionictigers.axiom.core.commands.groups
 
-import io.github.bionictigers.axiom.core.commands.BaseCommandState
 import io.github.bionictigers.axiom.core.commands.Command
 import kotlin.time.Duration
 
@@ -14,11 +13,11 @@ class CommandGroupBuilder {
         commands.add(command)
     }
 
-    fun instant(name: String? = null, block: (BaseCommandState) -> Unit) {
+    fun instant(name: String? = null, block: (Command.Meta) -> Unit) {
         add(Command.instant(name ?: "Instant Command", block))
     }
 
-    fun continuous(name: String? = null, block: (BaseCommandState) -> Unit) {
+    fun continuous(name: String? = null, block: (Command.Meta) -> Unit) {
         add(Command.continuous(name ?: "Continuous Command", action = block))
     }
 
@@ -26,7 +25,7 @@ class CommandGroupBuilder {
         add(Command.wait(name ?: "Wait Command", duration))
     }
 
-    fun waitUntil(name: String? = null, predicate: (BaseCommandState) -> Boolean) {
+    fun waitUntil(name: String? = null, predicate: (Command.Meta) -> Boolean) {
         add(Command.create(name ?: "Wait Until") {
             requires {
                 predicate(it)

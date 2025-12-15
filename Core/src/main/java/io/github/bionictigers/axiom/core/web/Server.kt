@@ -6,7 +6,7 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.adapter
 import com.squareup.moshi.adapters.PolymorphicJsonAdapterFactory
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
-import io.github.bionictigers.axiom.core.commands.Scheduler
+import io.github.bionictigers.axiom.core.scheduler.Scheduler
 import fi.iki.elonen.NanoWSD
 import fi.iki.elonen.NanoHTTPD.IHTTPSession
 import fi.iki.elonen.NanoHTTPD.Response.Status
@@ -153,7 +153,7 @@ object Server {
             serverScope.launch(Dispatchers.Default) {
                 try {
                     when (val msg = messageAdapter.fromJson(text)) {
-                        is IncomingMessage.Edit -> Scheduler.edit(msg.path, msg.value)
+                        is IncomingMessage.Edit -> Scheduler.edit(msg.path, msg.value.toString())
                         null -> RobotLog.dd("Axiom", "Null message after parse")
                     }
                 } catch (e: Exception) {

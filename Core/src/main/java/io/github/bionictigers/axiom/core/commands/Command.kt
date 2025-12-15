@@ -1,5 +1,6 @@
 package io.github.bionictigers.axiom.core.commands
 
+import io.github.bionictigers.axiom.core.scheduler.Scheduler
 import io.github.bionictigers.axiom.core.web.Hidden
 import java.lang.ref.WeakReference
 import java.util.UUID
@@ -12,7 +13,7 @@ private class CommandStopped : RuntimeException(null, null, false, false)
 
 class ExecutableDsl<S>(val command: Command<S>) {
     fun stop(): Nothing {
-        Scheduler.remove(command)
+        Scheduler.unschedule(command)
 
         throw CommandStopped()
     }
@@ -25,6 +26,8 @@ class ExecutableDsl<S>(val command: Command<S>) {
         return lambda(command.state, command.meta)
     }
 }
+
+typealias GenericCommand = Command<*>
 
 /**
  * Commands are used to execute functions in the scheduler.
@@ -41,9 +44,9 @@ internal constructor(
         val state: S?,
         private val interval: Duration? = null,
         internal var parent: System? = null
-) {
+) : Schedulable {
+    override val id = UUID.randomUUID().toString()
     val dependencies = ArrayList<WeakReference<Command<*>>>()
-    val id = UUID.randomUUID().toString()
 
     val meta = Meta(TimeSource.Monotonic.markNow(), TimeSource.Monotonic.markNow())
 

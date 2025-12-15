@@ -2,7 +2,7 @@ package io.github.bionictigers.axiom.core.input
 
 import com.qualcomm.robotcore.hardware.Gamepad
 import io.github.bionictigers.axiom.core.commands.Command
-import io.github.bionictigers.axiom.core.commands.Scheduler
+import io.github.bionictigers.axiom.core.scheduler.Scheduler
 import io.github.bionictigers.axiom.core.commands.System
 import io.github.bionictigers.axiom.core.input.types.Analog
 import io.github.bionictigers.axiom.core.input.types.Digital
