@@ -18,6 +18,12 @@ object Scheduler {
     val tick: Long
         get() = SchedulerState.tick
 
+    var telemetry: Telemetry?
+        set(value) {
+            SchedulerState.telemetry = value
+        }
+        get() = SchedulerState.telemetry
+    
     init {
         Server.onNewConnection { send ->
             val serialized = DeltaResolver.serialize(SchedulerState.commands, SchedulerState.systems)
@@ -64,6 +70,13 @@ object Scheduler {
         } else {
             PropertyEditor.edit(path, value)
         }
+    }
+
+    /**
+     * Clear the scheduler state.
+     */
+    fun clear() {
+        SchedulerState.clear()
     }
 
     fun tick() {

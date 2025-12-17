@@ -1,5 +1,6 @@
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 
 import icon from '../../resources/icon.ico?asset'
@@ -7,22 +8,27 @@ import iconOther from '../../resources/icon.png?asset'
 
 const version = app.getVersion()
 
+// Configure auto-updater
+autoUpdater.autoDownload = false
+autoUpdater.autoInstallOnAppQuit = true
+
 // Track renderer readiness and queue messages arriving before listeners are attached
 let rendererReady = false
 let mainWebContents: Electron.WebContents | null = null
+type UpdateChannel = 'update-available' | 'update-downloaded' | 'update-error' | 'update-progress'
+type AxiomChannel = 'axiom-connected' | 'axiom-disconnected' | 'axiom-data'
+
 const pendingAxiomMessages: Array<{
-  channel: 'axiom-connected' | 'axiom-disconnected' | 'axiom-data'
+  channel: AxiomChannel
   payload?: unknown
 }> = []
 
-function sendToRenderer(
-  channel: 'axiom-connected' | 'axiom-disconnected' | 'axiom-data',
-  payload?: unknown
-): void {
+function sendToRenderer(channel: AxiomChannel | UpdateChannel, payload?: unknown): void {
   if (rendererReady && mainWebContents) {
     mainWebContents.send(channel, payload)
-  } else {
-    pendingAxiomMessages.push({ channel, payload })
+  } else if (channel.startsWith('axiom-')) {
+    // Only queue Axiom messages; update messages are sent after renderer is ready
+    pendingAxiomMessages.push({ channel: channel as AxiomChannel, payload })
   }
 }
 
@@ -121,6 +127,59 @@ app.whenReady().then(() => {
   // Expose app version to renderer via IPC
   ipcMain.handle('app:getVersion', () => app.getVersion())
 
+  // Auto-updater events
+  autoUpdater.on('update-available', (info) => {
+    console.log('[main] Update available:', info.version)
+    sendToRenderer('update-available', { version: info.version })
+  })
+
+  autoUpdater.on('update-not-available', () => {
+    console.log('[main] No updates available')
+  })
+
+  autoUpdater.on('download-progress', (progress) => {
+    sendToRenderer('update-progress', { percent: progress.percent })
+  })
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('[main] Update downloaded:', info.version)
+    sendToRenderer('update-downloaded', { version: info.version })
+  })
+
+  autoUpdater.on('error', (err) => {
+    console.error('[main] Auto-updater error:', err)
+    sendToRenderer('update-error', { message: err.message })
+  })
+
+  // IPC handlers for update actions
+  ipcMain.handle('update:check', async () => {
+    if (is.dev) {
+      console.log('[main] Skipping update check in dev mode')
+      return null
+    }
+    try {
+      const result = await autoUpdater.checkForUpdates()
+      return result?.updateInfo ?? null
+    } catch (err) {
+      console.error('[main] Update check failed:', err)
+      return null
+    }
+  })
+
+  ipcMain.handle('update:download', async () => {
+    try {
+      await autoUpdater.downloadUpdate()
+      return true
+    } catch (err) {
+      console.error('[main] Download failed:', err)
+      return false
+    }
+  })
+
+  ipcMain.on('update:install', () => {
+    autoUpdater.quitAndInstall(false, true)
+  })
+
   // Axiom connection handlers
   ipcMain.on('axiom-connected', () => {
     sendToRenderer('axiom-connected')
@@ -148,6 +207,15 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+
+  // Check for updates after window is ready (production only)
+  if (!is.dev) {
+    setTimeout(() => {
+      autoUpdater.checkForUpdates().catch((err) => {
+        console.error('[main] Initial update check failed:', err)
+      })
+    }, 3000)
+  }
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

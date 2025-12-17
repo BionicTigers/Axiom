@@ -27,6 +27,10 @@ ws.on('message', (data) => {
 
 ws.start()
 
+export type UpdateInfo = { version: string }
+export type UpdateProgress = { percent: number }
+export type UpdateError = { message: string }
+
 const axiomAPI = {
   isConnected: () => ws.isConnected,
   onConnected: (callback: () => void): (() => void) => {
@@ -47,7 +51,32 @@ const axiomAPI = {
   send: (data: string | ArrayBufferLike | Blob | ArrayBufferView) => {
     ws.send(data)
   },
-  getVersion: async (): Promise<string> => ipcRenderer.invoke('app:getVersion')
+  getVersion: async (): Promise<string> => ipcRenderer.invoke('app:getVersion'),
+
+  // Auto-update API
+  checkForUpdates: async (): Promise<unknown> => ipcRenderer.invoke('update:check'),
+  downloadUpdate: async (): Promise<boolean> => ipcRenderer.invoke('update:download'),
+  installUpdate: (): void => ipcRenderer.send('update:install'),
+  onUpdateAvailable: (callback: (info: UpdateInfo) => void): (() => void) => {
+    const handler = (_: unknown, info: UpdateInfo) => callback(info)
+    ipcRenderer.on('update-available', handler)
+    return () => ipcRenderer.removeListener('update-available', handler)
+  },
+  onUpdateProgress: (callback: (progress: UpdateProgress) => void): (() => void) => {
+    const handler = (_: unknown, progress: UpdateProgress) => callback(progress)
+    ipcRenderer.on('update-progress', handler)
+    return () => ipcRenderer.removeListener('update-progress', handler)
+  },
+  onUpdateDownloaded: (callback: (info: UpdateInfo) => void): (() => void) => {
+    const handler = (_: unknown, info: UpdateInfo) => callback(info)
+    ipcRenderer.on('update-downloaded', handler)
+    return () => ipcRenderer.removeListener('update-downloaded', handler)
+  },
+  onUpdateError: (callback: (error: UpdateError) => void): (() => void) => {
+    const handler = (_: unknown, error: UpdateError) => callback(error)
+    ipcRenderer.on('update-error', handler)
+    return () => ipcRenderer.removeListener('update-error', handler)
+  }
 }
 
 if (process.contextIsolated) {

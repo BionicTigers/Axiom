@@ -23,6 +23,8 @@ internal object SchedulerState {
     var tick = 0L
     var deltaTime = Duration.ZERO
 
+    var telemetry: Telemetry? = null
+
     var changed = false
     var inUpdateCycle = false
 
@@ -55,6 +57,15 @@ internal object SchedulerState {
         changed = true
         commands.remove(command.id)
         command.schedulerExit()
+    }
+
+    fun clear() {
+        commands.clear()
+        sortedCommands = listOf()
+        systems.clear()
+        addQueue.clear()
+        removeQueue.clear()
+        editQueue.clear()
     }
 
     fun processAddQueue() {

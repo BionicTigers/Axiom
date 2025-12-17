@@ -1,9 +1,9 @@
 {
-  "name": "interface",
-  "version": "0.2.0",
-  "description": "An Electron application with Svelte and TypeScript",
+  "name": "Seek",
+  "version": "0.2.1",
+  "description": "An interactive interface for the Axiom robotics framework",
   "main": "./out/main/index.js",
-  "author": "example.com",
+  "author": "atk422.github.com",
   "homepage": "https://electron-vite.org",
   "scripts": {
     "format": "prettier --plugin prettier-plugin-svelte --write .",
