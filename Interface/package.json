@@ -1,9 +1,9 @@
 {
   "name": "Seek",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "An interactive interface for the Axiom robotics framework",
   "main": "./out/main/index.js",
-  "author": "atk422.github.com",
+  "author": "bionictigers.github.com",
   "homepage": "https://electron-vite.org",
   "scripts": {
     "format": "prettier --plugin prettier-plugin-svelte --write .",

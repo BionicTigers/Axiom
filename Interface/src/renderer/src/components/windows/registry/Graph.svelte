@@ -65,6 +65,37 @@
     const meta = $seriesMeta.find((m) => m.key === key)
     return meta?.color ?? '#ffffff'
   }
+
+  function downloadCSV() {
+    if ($graphData.length === 0 || $graphData[0].length === 0) {
+      return
+    }
+
+    // Build CSV header
+    const headers = ['Time', ...$seriesMeta.map((m) => m.label)]
+    const rows: string[] = [headers.join(',')]
+
+    // Build CSV rows
+    const numRows = $graphData[0].length
+    for (let i = 0; i < numRows; i++) {
+      const row: (number | string)[] = []
+      for (let j = 0; j < $graphData.length; j++) {
+        const val = $graphData[j][i]
+        row.push(val === null ? '' : val)
+      }
+      rows.push(row.join(','))
+    }
+
+    // Create blob and download
+    const csv = rows.join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `graph-data-${Date.now()}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
 </script>
 
 <div class="graph-container">
@@ -84,6 +115,14 @@
     <div class="header-buttons">
       <button class="pause-btn" class:paused={$paused} onclick={togglePause}>
         {$paused ? '▶ Resume' : '⏸ Pause'}
+      </button>
+      <button
+        class="download-btn"
+        onclick={downloadCSV}
+        disabled={$selectedSeries.length === 0}
+        title="Download graph data as CSV"
+      >
+        ⬇ CSV
       </button>
       <button class="clear-btn" onclick={handleClear}>Clear All</button>
     </div>
@@ -209,6 +248,7 @@
   }
 
   .pause-btn,
+  .download-btn,
   .clear-btn {
     padding: 6px 12px;
     border-radius: 6px;
@@ -221,8 +261,18 @@
   }
 
   .pause-btn:hover,
+  .download-btn:hover,
   .clear-btn:hover {
     background-color: rgb(43, 52, 70);
+  }
+
+  .download-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .download-btn:disabled:hover {
+    background-color: rgb(33, 42, 60);
   }
 
   .pause-btn.paused {
