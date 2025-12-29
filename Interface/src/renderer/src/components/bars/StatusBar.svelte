@@ -2,10 +2,14 @@
   import { onMount } from 'svelte'
   import DownloadIcon from '~icons/material-symbols/download-rounded'
   import InstallIcon from '~icons/material-symbols/install-desktop-rounded'
+  import RefreshIcon from '~icons/material-symbols/refresh-rounded'
 
   let { isConnected, latency }: { isConnected: boolean; latency: number } = $props()
   let status = $derived(latency < 10 ? 'stable' : 'unstable')
   let version = $state<string>('')
+  
+  type ConnectionMethod = 'usb' | 'wifi' | 'unknown'
+  let connectionMethod = $state<ConnectionMethod>('unknown')
 
   // Update state
   type UpdateState = 'none' | 'available' | 'downloading' | 'ready'
@@ -39,11 +43,27 @@
       updateState = 'none'
     })
 
+    // ADB connection method tracking
+    const offAdbSuccess = window.axiomAPI.onAdbForwardingSuccess(() => {
+      connectionMethod = 'usb'
+    })
+
+    const offAdbNotAvailable = window.axiomAPI.onAdbNotAvailable(() => {
+      connectionMethod = 'wifi'
+    })
+
+    const offAdbNoDevice = window.axiomAPI.onAdbNoDevice(() => {
+      connectionMethod = 'wifi'
+    })
+
     return () => {
       offAvailable()
       offProgress()
       offDownloaded()
       offError()
+      offAdbSuccess()
+      offAdbNotAvailable()
+      offAdbNoDevice()
     }
   })
 
@@ -62,9 +82,28 @@
     <li>
       Axiom - <span class="axiom-status {status}">{status}</span>
       <span class="latency">({latency}ms)</span>
+      {#if connectionMethod !== 'unknown'}
+        <span class="connection-method {connectionMethod}" title="{connectionMethod === 'usb' ? 'Connected via USB' : 'Connected via WiFi'}">
+          {connectionMethod === 'usb' ? '🔌' : '📡'}
+        </span>
+      {/if}
     </li>
   {:else}
-    <li>Axiom - <span class="not-connected axiom-status">not connected</span></li>
+    <li>
+      Axiom - <span class="not-connected axiom-status">not connected</span>
+      {#if connectionMethod !== 'unknown'}
+        <span class="connection-method-hint">({connectionMethod === 'usb' ? 'USB ready' : 'WiFi mode'})</span>
+        {#if connectionMethod === 'wifi'}
+          <button
+            class="refresh-btn"
+            onclick={() => window.axiomAPI.refreshAdb()}
+            title="Check for USB device"
+          >
+            <RefreshIcon />
+          </button>
+        {/if}
+      {/if}
+    </li>
   {/if}
   <li class="version-item">
     Seek {version}
@@ -140,6 +179,42 @@
 
   .not-connected {
     color: var(--ev-c-red);
+  }
+
+  .connection-method {
+    margin-left: 8px;
+    font-size: 12px;
+    opacity: 0.8;
+  }
+
+  .connection-method.usb {
+    filter: hue-rotate(120deg);
+  }
+
+  .connection-method-hint {
+    color: var(--ev-c-gray-1);
+    font-size: 11px;
+    margin-left: 4px;
+  }
+
+  .refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 2px;
+    margin-left: 4px;
+    cursor: pointer;
+    color: var(--ev-c-gray-1);
+    font-size: 14px;
+    transition: color 0.15s, transform 0.15s;
+    vertical-align: middle;
+  }
+
+  .refresh-btn:hover {
+    color: var(--ev-c-cyan, #56d4dd);
+    transform: rotate(90deg);
   }
 
   .version-item {

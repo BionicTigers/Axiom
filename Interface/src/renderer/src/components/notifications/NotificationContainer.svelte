@@ -11,7 +11,7 @@
 
 <div class="toast-container">
   {#each toasts as toast (toast.id)}
-    <div animate:flip={{ duration: 300 }}>
+    <div class="toast-wrapper" animate:flip={{ duration: 250 }}>
       <NotificationToast notification={toast} />
     </div>
   {/each}
@@ -27,14 +27,19 @@
 <style>
   .toast-container {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    bottom: 100px;
+    right: 24px;
     display: flex;
-    flex-direction: column;
-    gap: 10px;
+    flex-direction: column-reverse;
+    gap: 12px;
     z-index: 9999;
-    pointer-events: none; /* Allows clicking through the container */
-    max-height: 100vh;
+    pointer-events: none;
+    max-height: calc(100vh - 140px);
     overflow: hidden;
+  }
+
+  .toast-wrapper {
+    display: flex;
+    justify-content: flex-end;
   }
 </style>

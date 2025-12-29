@@ -1,4 +1,5 @@
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
+import { exec } from 'child_process'
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
@@ -7,6 +8,92 @@ import icon from '../../resources/icon.ico?asset'
 import iconOther from '../../resources/icon.png?asset'
 
 const version = app.getVersion()
+
+// Test mode for simulating ADB unavailability
+let adbTestMode: 'normal' | 'simulate-not-installed' | 'simulate-no-device' = 'normal'
+let lastAdbStatus: 'success' | 'no-device' | 'not-available' | null = null
+let adbCheckInterval: NodeJS.Timeout | null = null
+
+// Set up ADB port forwarding for USB connections
+function setupAdbForwarding(silent = false, userInitiated = false): void {
+  // Test mode simulation
+  if (adbTestMode === 'simulate-not-installed') {
+    console.log('[main] TEST MODE: Simulating ADB not installed')
+    if (lastAdbStatus !== 'not-available' || !silent) {
+      lastAdbStatus = 'not-available'
+      sendToRenderer('adb-not-available')
+    }
+    if (userInitiated) {
+      sendToRenderer('adb-retry-failed')
+    }
+    return
+  }
+  if (adbTestMode === 'simulate-no-device') {
+    console.log('[main] TEST MODE: Simulating no device connected')
+    if (lastAdbStatus !== 'no-device' || !silent) {
+      lastAdbStatus = 'no-device'
+      sendToRenderer('adb-no-device')
+    }
+    if (userInitiated) {
+      sendToRenderer('adb-retry-failed')
+    }
+    return
+  }
+
+  // First check if ADB is installed
+  exec('adb version', (error) => {
+    if (error) {
+      if (lastAdbStatus !== 'not-available' || !silent) {
+        console.log('[main] ADB not installed or not in PATH')
+        lastAdbStatus = 'not-available'
+        sendToRenderer('adb-not-available')
+      }
+      if (userInitiated) {
+        sendToRenderer('adb-retry-failed')
+      }
+      return
+    }
+
+    // ADB is available, try to set up forwarding
+    const port = 10464
+    exec(`adb forward tcp:${port} tcp:${port}`, (error, stdout, stderr) => {
+      if (error) {
+        if (lastAdbStatus !== 'no-device' || !silent) {
+          console.log('[main] ADB forwarding not available (device may not be connected via USB)')
+          lastAdbStatus = 'no-device'
+          sendToRenderer('adb-no-device')
+        }
+        if (userInitiated) {
+          sendToRenderer('adb-retry-failed')
+        }
+      } else {
+        if (lastAdbStatus !== 'success' || !silent) {
+          console.log(`[main] ADB port forwarding established on port ${port}`)
+          lastAdbStatus = 'success'
+          sendToRenderer('adb-forwarding-success')
+        }
+        if (stdout && !silent) console.log('[main] ADB stdout:', stdout.trim())
+        if (stderr && !silent) console.log('[main] ADB stderr:', stderr.trim())
+      }
+    })
+  })
+}
+
+// Start periodic ADB check for device hotplug
+function startAdbMonitoring(): void {
+  // Check every 3 seconds for device connection changes
+  adbCheckInterval = setInterval(() => {
+    setupAdbForwarding(true) // silent mode - only notify on status change
+  }, 3000)
+}
+
+// Stop ADB monitoring
+function stopAdbMonitoring(): void {
+  if (adbCheckInterval) {
+    clearInterval(adbCheckInterval)
+    adbCheckInterval = null
+  }
+}
 
 // Configure auto-updater
 autoUpdater.autoDownload = false
@@ -20,18 +107,27 @@ let rendererReady = false
 let mainWebContents: Electron.WebContents | null = null
 type UpdateChannel = 'update-available' | 'update-downloaded' | 'update-error' | 'update-progress'
 type AxiomChannel = 'axiom-connected' | 'axiom-disconnected' | 'axiom-data'
+type AdbChannel = 'adb-not-available' | 'adb-no-device' | 'adb-forwarding-success' | 'adb-retry-failed'
 
 const pendingAxiomMessages: Array<{
   channel: AxiomChannel
   payload?: unknown
 }> = []
 
-function sendToRenderer(channel: AxiomChannel | UpdateChannel, payload?: unknown): void {
+const pendingAdbMessages: Array<{
+  channel: AdbChannel
+  payload?: unknown
+}> = []
+
+function sendToRenderer(channel: AxiomChannel | UpdateChannel | AdbChannel, payload?: unknown): void {
   if (rendererReady && mainWebContents) {
     mainWebContents.send(channel, payload)
   } else if (channel.startsWith('axiom-')) {
-    // Only queue Axiom messages; update messages are sent after renderer is ready
+    // Queue Axiom messages until renderer is ready
     pendingAxiomMessages.push({ channel: channel as AxiomChannel, payload })
+  } else if (channel.startsWith('adb-')) {
+    // Queue ADB messages until renderer is ready
+    pendingAdbMessages.push({ channel: channel as AdbChannel, payload })
   }
 }
 
@@ -90,6 +186,10 @@ function createWindow(): void {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
+  // Set up ADB port forwarding for USB connections and start monitoring for hotplug
+  setupAdbForwarding()
+  startAdbMonitoring()
+
   // App user model id already set above for auto-updater
 
   // Default open or close DevTools by F12 in development
@@ -128,6 +228,22 @@ app.whenReady().then(() => {
 
   // Expose app version to renderer via IPC
   ipcMain.handle('app:getVersion', () => app.getVersion())
+
+  // ADB test mode handler
+  ipcMain.handle('adb:setTestMode', (_event, mode: typeof adbTestMode) => {
+    adbTestMode = mode
+    lastAdbStatus = null // Reset status to force re-send
+    console.log('[main] ADB test mode set to:', mode)
+    setupAdbForwarding()
+    return true
+  })
+
+  // Manual ADB refresh handler
+  ipcMain.handle('adb:refresh', () => {
+    lastAdbStatus = null // Reset status to force re-send
+    setupAdbForwarding(false, true) // not silent, user initiated
+    return true
+  })
 
   // Auto-updater events
   autoUpdater.on('update-available', (info) => {
@@ -200,12 +316,22 @@ app.whenReady().then(() => {
     rendererReady = true
     // Prefer the sender that announced readiness
     mainWebContents = event.sender
-    console.log('[main] renderer-ready; flushing', pendingAxiomMessages.length, 'queued messages')
+    console.log(
+      '[main] renderer-ready; flushing',
+      pendingAxiomMessages.length,
+      'axiom and',
+      pendingAdbMessages.length,
+      'adb queued messages'
+    )
     // Flush any queued messages in order
     for (const { channel, payload } of pendingAxiomMessages) {
       event.sender.send(channel, payload)
     }
     pendingAxiomMessages.length = 0
+    for (const { channel, payload } of pendingAdbMessages) {
+      event.sender.send(channel, payload)
+    }
+    pendingAdbMessages.length = 0
   })
 
   createWindow()
@@ -230,6 +356,7 @@ app.whenReady().then(() => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
+  stopAdbMonitoring()
   if (process.platform !== 'darwin') {
     app.quit()
   }

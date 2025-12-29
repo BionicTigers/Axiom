@@ -12,6 +12,7 @@
   import NotificationContainer from './components/notifications/NotificationContainer.svelte'
   import { schedulableOrderStore, schedulableStore } from './lib/stores/schedulableStore'
   import { clearAllSeries } from './lib/stores/graphStore'
+  import { addNotification, NotificationType } from './lib/stores/notificationStore'
 
   let isConnected = $state(false)
 
@@ -39,6 +40,41 @@
       isConnected = false
     })
 
+    // ADB status notifications - only show problems, not successes
+    const offAdbNotAvailable = window.axiomAPI.onAdbNotAvailable(() => {
+      addNotification(
+        {
+          title: 'ADB Not Available',
+          message:
+            'Android Debug Bridge (ADB) is not installed or not in PATH. USB connections will not work. Install ADB to enable USB connectivity.',
+          type: NotificationType.WARNING,
+          isModal: false
+        },
+        0
+      )
+    })
+
+    const offAdbNoDevice = window.axiomAPI.onAdbNoDevice(() => {
+      // Silent - just show in status bar
+    })
+
+    const offAdbSuccess = window.axiomAPI.onAdbForwardingSuccess(() => {
+      // Silent - just show in status bar
+    })
+
+    const offAdbRetryFailed = window.axiomAPI.onAdbRetryFailed(() => {
+      addNotification(
+        {
+          title: 'No USB Device Found',
+          message:
+            'Still no USB device detected. Make sure your device is connected via USB and USB debugging is enabled.',
+          type: NotificationType.WARNING,
+          isModal: false
+        },
+        0
+      )
+    })
+
     try {
       window.electron.ipcRenderer.send('renderer-ready')
     } catch {
@@ -49,6 +85,10 @@
       offConnected()
       offData()
       offDisconnected()
+      offAdbNotAvailable()
+      offAdbNoDevice()
+      offAdbSuccess()
+      offAdbRetryFailed()
     }
   })
 

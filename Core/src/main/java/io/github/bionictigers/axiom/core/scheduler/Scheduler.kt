@@ -31,6 +31,8 @@ object Scheduler {
             send(SchedulablesInitial(serialized))
             send(SchedulerOrder(SchedulerState.sortedCommands.map { it.id }))
         }
+
+//        Server.start()
     }
 
     fun schedule(vararg command: Command<*>) = command.forEach(::schedule)

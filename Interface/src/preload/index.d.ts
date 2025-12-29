@@ -22,6 +22,15 @@ declare global {
       onUpdateProgress: (callback: (progress: UpdateProgress) => void) => () => void
       onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => () => void
       onUpdateError: (callback: (error: UpdateError) => void) => () => void
+      // ADB status API
+      onAdbNotAvailable: (callback: () => void) => () => void
+      onAdbNoDevice: (callback: () => void) => () => void
+      onAdbForwardingSuccess: (callback: () => void) => () => void
+      onAdbRetryFailed: (callback: () => void) => () => void
+      setAdbTestMode: (
+        mode: 'normal' | 'simulate-not-installed' | 'simulate-no-device'
+      ) => Promise<boolean>
+      refreshAdb: () => Promise<boolean>
     }
   }
 }

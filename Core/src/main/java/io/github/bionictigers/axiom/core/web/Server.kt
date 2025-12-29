@@ -1,5 +1,10 @@
 package io.github.bionictigers.axiom.core.web
 
+import android.content.Context
+import com.qualcomm.ftccommon.FtcEventLoop
+import com.qualcomm.robotcore.eventloop.opmode.OpMode
+import com.qualcomm.robotcore.eventloop.opmode.OpModeManagerImpl
+import com.qualcomm.robotcore.eventloop.opmode.OpModeManagerNotifier
 import com.qualcomm.robotcore.util.RobotLog
 import com.squareup.moshi.JsonClass
 import com.squareup.moshi.Moshi
@@ -22,8 +27,12 @@ import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.firstinspires.ftc.ftccommon.external.OnCreateEventLoop
+import org.firstinspires.ftc.robotcore.internal.opmode.OpModeMeta
+import org.firstinspires.ftc.robotcore.internal.opmode.RegisteredOpModes
 import java.io.IOException
 import java.util.Timer
+import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.concurrent.fixedRateTimer
 
 @JsonClass(generateAdapter = true)
@@ -62,7 +71,7 @@ object Server {
 
     @JvmStatic
     internal fun start() {
-        println("Start Called")
+        RobotLog.dd("Axiom", "Start called")
         // Create & start the NanoWSD server on port 10464
         val server = object : NanoWSD(10464) {
             override fun openWebSocket(handshake: IHTTPSession): WebSocket {
@@ -87,7 +96,6 @@ object Server {
             RobotLog.dd("Axiom", "Serialization error: ${e.message}")
             "{}"
         }
-
 
         synchronized(connections) {
             connections.forEach { ws ->
@@ -181,6 +189,93 @@ object Server {
             } catch (e: IOException) {
                 RobotLog.ww("Axiom", "Failed to send to client: ${e.message}")
             }
+        }
+    }
+
+    object FTCLayer : OpModeManagerNotifier.Notifications {
+        enum class OpModeState {
+            Selected,
+            Init,
+            Running
+        }
+
+        lateinit var eventLoop: FtcEventLoop
+            private set
+        var opModeManager: OpModeManagerImpl? = null
+            private set
+
+        val teleOpModes = ConcurrentLinkedQueue<String>()
+        val autoOpModes = ConcurrentLinkedQueue<String>()
+
+        val selectedOpMode: OpMode?
+            get() = opModeManager?.activeOpMode
+        val selectedOpModeName: String?
+            get() = opModeManager?.activeOpModeName.takeUnless { it == "\$Stop\$Robot\$" }
+        var opModeState: OpModeState = OpModeState.Selected
+            private set
+
+        @JvmStatic
+        @OnCreateEventLoop
+        fun eventLoopHandler(context: Context, eventLoop: FtcEventLoop) {
+            RobotLog.dd("Axiom", "Event Loop")
+            this.eventLoop = eventLoop
+
+            start()
+
+            opModeManager?.unregisterListener(this)
+            RegisteredOpModes.getInstance()
+
+            opModeManager = eventLoop.opModeManager
+            opModeManager?.registerListener(this)
+
+            val registeredOpModes = RegisteredOpModes.getInstance()
+            RobotLog.dd("Axiom", "Waiting for op modes")
+            registeredOpModes.waitOpModesRegistered()
+            RobotLog.dd("Axiom", "Waiting finished")
+            RobotLog.dd("Axiom", registeredOpModes.opModes.toString())
+
+            registeredOpModes.opModes.filter { it.flavor != OpModeMeta.Flavor.SYSTEM }.forEach {
+                if (it.flavor == OpModeMeta.Flavor.TELEOP) teleOpModes.add(it.name)
+                if (it.flavor == OpModeMeta.Flavor.AUTONOMOUS) autoOpModes.add(it.name)
+            }
+//                send(generateOpModeList(teleOpModes.toList(), autoOpModes.toList()))
+        }
+
+        fun initOpMode(opModeName: String) {
+            if (!teleOpModes.contains(opModeName) && !autoOpModes.contains(opModeName)) {
+                RobotLog.ww("Axiom", "Cannot start opMode as it doesn't exist")
+                return
+            }
+
+            opModeManager?.initOpMode(opModeName)
+        }
+
+        fun startOpMode() {
+            opModeManager?.startActiveOpMode()
+        }
+
+        fun stopOpMode() {
+            opModeManager?.stopActiveOpMode()
+        }
+
+        override fun onOpModePreInit(opMode: OpMode?) {
+            Scheduler.clear()
+            if (selectedOpModeName == null) return
+            opModeState = OpModeState.Init
+//            send(generateOpModeChange(selectedOpModeName, opModeState))
+        }
+
+        override fun onOpModePreStart(opMode: OpMode?) {
+            if (selectedOpModeName == null) return
+            opModeState = OpModeState.Running
+//            send(generateOpModeChange(selectedOpModeName, opModeState))
+        }
+
+        override fun onOpModePostStop(opMode: OpMode?) {
+            Scheduler.clear()
+            if (selectedOpModeName == null) return
+            opModeState = OpModeState.Selected
+//            send(generateOpModeChange(selectedOpModeName, opModeState))
         }
     }
 }
