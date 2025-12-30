@@ -192,12 +192,41 @@ app.whenReady().then(() => {
 
   // App user model id already set above for auto-updater
 
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+  // Enable DevTools shortcuts in both development and production
+  // F12 or Ctrl+Shift+I (Cmd+Option+I on Mac) to open DevTools
+  // CommandOrControl + R is ignored in production
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
+    
+    // Override to enable F12 DevTools in production
+    window.webContents.on('before-input-event', (event, input) => {
+      if (input.type === 'keyDown') {
+        // F12 to toggle DevTools
+        if (input.key === 'F12') {
+          if (window.webContents.isDevToolsOpened()) {
+            window.webContents.closeDevTools()
+          } else {
+            window.webContents.openDevTools()
+          }
+          event.preventDefault()
+        }
+        // Ctrl+Shift+I (Cmd+Option+I on Mac) to toggle DevTools
+        else if (
+          input.key === 'I' &&
+          ((input.control && input.shift && process.platform !== 'darwin') ||
+            (input.meta && input.alt && process.platform === 'darwin'))
+        ) {
+          if (window.webContents.isDevToolsOpened()) {
+            window.webContents.closeDevTools()
+          } else {
+            window.webContents.openDevTools()
+          }
+          event.preventDefault()
+        }
+      }
+    })
   })
+  
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))

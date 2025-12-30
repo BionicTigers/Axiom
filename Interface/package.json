@@ -1,6 +1,6 @@
 {
   "name": "Seek",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "An interactive interface for the Axiom robotics framework",
   "main": "./out/main/index.js",
   "author": "bionictigers.github.com",

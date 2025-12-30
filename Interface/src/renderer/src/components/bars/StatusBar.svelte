@@ -3,6 +3,8 @@
   import DownloadIcon from '~icons/material-symbols/download-rounded'
   import InstallIcon from '~icons/material-symbols/install-desktop-rounded'
   import RefreshIcon from '~icons/material-symbols/refresh-rounded'
+  import USBIcon from '~icons/material-symbols/usb-rounded'
+  import WIFIIcon from '~icons/material-symbols/wifi-rounded'
 
   let { isConnected, latency }: { isConnected: boolean; latency: number } = $props()
   let status = $derived(latency < 10 ? 'stable' : 'unstable')
@@ -84,7 +86,11 @@
       <span class="latency">({latency}ms)</span>
       {#if connectionMethod !== 'unknown'}
         <span class="connection-method {connectionMethod}" title="{connectionMethod === 'usb' ? 'Connected via USB' : 'Connected via WiFi'}">
-          {connectionMethod === 'usb' ? '🔌' : '📡'}
+          {#if connectionMethod === "usb"}
+            <USBIcon />
+          {:else}
+            <WIFIIcon />
+          {/if}
         </span>
       {/if}
     </li>
