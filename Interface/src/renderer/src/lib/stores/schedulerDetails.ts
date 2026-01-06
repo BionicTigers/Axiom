@@ -20,16 +20,8 @@
 import { writable, derived, get } from 'svelte/store'
 
 import { registerNetworkEvent } from '../networkRegistry'
-import {
-  recordSnapshot,
-  displayedSnapshot,
-  isPaused,
-  type TickSnapshot
-} from './historyStore'
-import {
-  schedulableOrderStore,
-  createSchedulablesSnapshot
-} from './schedulableStore'
+import { recordSnapshot, displayedSnapshot, isPaused, type TickSnapshot } from './historyStore'
+import { schedulableOrderStore, createSchedulablesSnapshot } from './schedulableStore'
 import { getCurrentBehaviorTreeSnapshots } from './behaviorTreeStore'
 
 export type SchedulerDetails = {

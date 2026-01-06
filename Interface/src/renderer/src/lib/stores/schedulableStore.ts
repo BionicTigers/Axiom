@@ -2,11 +2,7 @@ import { get, writable, derived, type Writable } from 'svelte/store'
 
 import { registerNetworkEvent } from '../networkRegistry'
 import type { UUID } from '../types'
-import {
-  displayedSnapshot,
-  isPaused,
-  type SchedulableSnapshot
-} from './historyStore'
+import { displayedSnapshot, isPaused, type SchedulableSnapshot } from './historyStore'
 
 // Types now sourced from ../types
 

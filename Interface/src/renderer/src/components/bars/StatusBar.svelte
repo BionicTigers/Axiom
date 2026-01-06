@@ -28,7 +28,7 @@
   let { isConnected, latency }: { isConnected: boolean; latency: number } = $props()
   let status = $derived(latency < 10 ? 'stable' : 'unstable')
   let version = $state<string>('')
-  
+
   type ConnectionMethod = 'usb' | 'wifi' | 'unknown'
   let connectionMethod = $state<ConnectionMethod>('unknown')
 
@@ -121,8 +121,11 @@
       Axiom - <span class="axiom-status {status}">{status}</span>
       <span class="latency">({latency}ms)</span>
       {#if connectionMethod !== 'unknown'}
-        <span class="connection-method {connectionMethod}" title="{connectionMethod === 'usb' ? 'Connected via USB' : 'Connected via WiFi'}">
-          {#if connectionMethod === "usb"}
+        <span
+          class="connection-method {connectionMethod}"
+          title={connectionMethod === 'usb' ? 'Connected via USB' : 'Connected via WiFi'}
+        >
+          {#if connectionMethod === 'usb'}
             <USBIcon />
           {:else}
             <WIFIIcon />
@@ -186,7 +189,11 @@
         disabled={$historyBounds.max === 0}
         title="Tick {$displayInfo.tick}"
       />
-      <span class="tick-display" class:paused={$isPaused} class:historical={$displayInfo.isHistorical}>
+      <span
+        class="tick-display"
+        class:paused={$isPaused}
+        class:historical={$displayInfo.isHistorical}
+      >
         {#if $isPaused}
           {#if $displayInfo.isHistorical}
             T{$displayInfo.tick}
@@ -198,16 +205,16 @@
         {/if}
       </span>
       {#if $isPaused}
-        <button class="live-btn" onclick={resumeLive} title="Resume live view">
-          LIVE
-        </button>
+        <button class="live-btn" onclick={resumeLive} title="Resume live view"> LIVE </button>
       {/if}
     </li>
   {:else}
     <li>
       Axiom - <span class="not-connected axiom-status">not connected</span>
       {#if connectionMethod !== 'unknown'}
-        <span class="connection-method-hint">({connectionMethod === 'usb' ? 'USB ready' : 'WiFi mode'})</span>
+        <span class="connection-method-hint"
+          >({connectionMethod === 'usb' ? 'USB ready' : 'WiFi mode'})</span
+        >
         {#if connectionMethod === 'wifi'}
           <button
             class="refresh-btn"
@@ -235,9 +242,7 @@
         {Math.round(downloadProgress)}%
       </span>
     {:else if updateState === 'error'}
-      <span class="update-error" title={updateError}>
-        Update failed
-      </span>
+      <span class="update-error" title={updateError}> Update failed </span>
     {:else if updateState === 'ready'}
       <button
         class="update-btn ready"
@@ -327,7 +332,9 @@
     cursor: pointer;
     color: var(--ev-c-gray-1);
     font-size: 14px;
-    transition: color 0.15s, transform 0.15s;
+    transition:
+      color 0.15s,
+      transform 0.15s;
     vertical-align: middle;
   }
 

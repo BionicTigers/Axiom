@@ -10,18 +10,15 @@
     getStatusIcon,
     type NodeSnapshot
   } from '../../../lib/stores/behaviorTreeStore'
-  import {
-    isPaused,
-    isViewingHistorical,
-    historyBounds
-  } from '../../../lib/stores/historyStore'
+  import { isPaused, isViewingHistorical, historyBounds } from '../../../lib/stores/historyStore'
+  import { SvelteMap } from 'svelte/reactivity'
 
   let { id }: { id: string } = $props()
   update(id, { maxW: 500, minW: 350, minH: 400 })
 
   // Build tree structure from flat nodes
-  function buildTree(nodes: NodeSnapshot[]): Map<string | null, NodeSnapshot[]> {
-    const childrenMap = new Map<string | null, NodeSnapshot[]>()
+  function buildTree(nodes: NodeSnapshot[]): SvelteMap<string | null, NodeSnapshot[]> {
+    const childrenMap = new SvelteMap<string | null, NodeSnapshot[]>()
     for (const node of nodes) {
       const parentId = node.parentId
       if (!childrenMap.has(parentId)) {
@@ -36,7 +33,7 @@
   function getNodeDepth(
     nodeId: string,
     nodes: NodeSnapshot[],
-    cache: Map<string, number> = new Map()
+    cache: SvelteMap<string, number> = new SvelteMap()
   ): number {
     if (cache.has(nodeId)) return cache.get(nodeId)!
     const node = nodes.find((n) => n.id === nodeId)
@@ -51,7 +48,7 @@
 
   // Flatten tree for display with proper ordering
   function flattenTree(
-    childrenMap: Map<string | null, NodeSnapshot[]>,
+    childrenMap: SvelteMap<string | null, NodeSnapshot[]>,
     parentId: string | null = null
   ): NodeSnapshot[] {
     const children = childrenMap.get(parentId) || []
@@ -73,7 +70,7 @@
   let depthCache = $derived.by(() => {
     const trace = $displayedTrace
     if (!trace) return new Map<string, number>()
-    const cache = new Map<string, number>()
+    const cache = new SvelteMap<string, number>()
     for (const node of trace.nodes) {
       getNodeDepth(node.id, trace.nodes, cache)
     }
@@ -176,11 +173,7 @@
         {#each treeNodes as node (node.id)}
           {@const depth = depthCache.get(node.id) ?? 0}
           {@const isActive = activePathSet.has(node.name)}
-          <div
-            class="tree-node"
-            class:active={isActive}
-            style="--depth: {depth}"
-          >
+          <div class="tree-node" class:active={isActive} style="--depth: {depth}">
             <span
               class="status-indicator"
               style="color: {getStatusColor(node.status)}"

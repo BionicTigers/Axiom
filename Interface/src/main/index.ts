@@ -107,7 +107,11 @@ let rendererReady = false
 let mainWebContents: Electron.WebContents | null = null
 type UpdateChannel = 'update-available' | 'update-downloaded' | 'update-error' | 'update-progress'
 type AxiomChannel = 'axiom-connected' | 'axiom-disconnected' | 'axiom-data'
-type AdbChannel = 'adb-not-available' | 'adb-no-device' | 'adb-forwarding-success' | 'adb-retry-failed'
+type AdbChannel =
+  | 'adb-not-available'
+  | 'adb-no-device'
+  | 'adb-forwarding-success'
+  | 'adb-retry-failed'
 
 const pendingAxiomMessages: Array<{
   channel: AxiomChannel
@@ -119,7 +123,10 @@ const pendingAdbMessages: Array<{
   payload?: unknown
 }> = []
 
-function sendToRenderer(channel: AxiomChannel | UpdateChannel | AdbChannel, payload?: unknown): void {
+function sendToRenderer(
+  channel: AxiomChannel | UpdateChannel | AdbChannel,
+  payload?: unknown
+): void {
   if (rendererReady && mainWebContents) {
     mainWebContents.send(channel, payload)
   } else if (channel.startsWith('axiom-')) {
@@ -197,7 +204,7 @@ app.whenReady().then(() => {
   // CommandOrControl + R is ignored in production
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
-    
+
     // Override to enable F12 DevTools in production
     window.webContents.on('before-input-event', (event, input) => {
       if (input.type === 'keyDown') {
@@ -226,7 +233,6 @@ app.whenReady().then(() => {
       }
     })
   })
-  
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
@@ -319,7 +325,9 @@ app.whenReady().then(() => {
       return true
     } catch (err) {
       console.error('[main] Download failed:', err)
-      sendToRenderer('update-error', { message: err instanceof Error ? err.message : 'Download failed' })
+      sendToRenderer('update-error', {
+        message: err instanceof Error ? err.message : 'Download failed'
+      })
       return false
     }
   })

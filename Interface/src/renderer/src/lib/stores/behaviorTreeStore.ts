@@ -1,10 +1,6 @@
 import { writable, derived, get } from 'svelte/store'
 import { registerNetworkEvent } from '../networkRegistry'
-import {
-  displayedSnapshot,
-  isPaused,
-  type BehaviorTreeSnapshot
-} from './historyStore'
+import { displayedSnapshot, isPaused, type BehaviorTreeSnapshot } from './historyStore'
 
 /**
  * Status of a BT node
@@ -49,9 +45,7 @@ export interface BehaviorTreeState {
 export const behaviorTreeStore = writable<Map<string, BehaviorTreeState>>(new Map())
 
 // Derived store for list of tree IDs (for dropdowns)
-export const behaviorTreeIds = derived(behaviorTreeStore, ($store) =>
-  Array.from($store.keys())
-)
+export const behaviorTreeIds = derived(behaviorTreeStore, ($store) => Array.from($store.keys()))
 
 // Currently selected tree ID for the debugger UI
 export const selectedTreeId = writable<string | null>(null)

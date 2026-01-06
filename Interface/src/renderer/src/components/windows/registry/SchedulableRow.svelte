@@ -14,7 +14,9 @@
     })()
   )
 
-  const parent = $derived(schedulable.parent ? $displayedSchedulableStore.get(schedulable.parent) : null)
+  const parent = $derived(
+    schedulable.parent ? $displayedSchedulableStore.get(schedulable.parent) : null
+  )
 </script>
 
 <li class="row">
