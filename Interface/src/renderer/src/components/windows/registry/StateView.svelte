@@ -1,12 +1,12 @@
 <script lang="ts">
   import { getCommandExecutionTimeColor } from '../../../lib/color'
-  import { schedulableStore } from '../../../lib/stores/schedulableStore'
+  import { displayedSchedulableStore } from '../../../lib/stores/schedulableStore'
   import { update } from '../../../lib/stores/windows'
   import StateValue from '../../StateValue.svelte'
 
   let { id }: { id: string } = $props()
 
-  let schedulable = $derived($schedulableStore.get(id))
+  let schedulable = $derived($displayedSchedulableStore.get(id))
   let scheduableState = $derived(schedulable?.state)
 
   let executionTime = $derived(

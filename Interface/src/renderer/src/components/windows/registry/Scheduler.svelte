@@ -1,6 +1,10 @@
 <script lang="ts">
-  import { schedulableOrderStore, schedulableStore } from '../../../lib/stores/schedulableStore'
-  import { schedulerDetails } from '../../../lib/stores/schedulerDetails'
+  import {
+    displayedSchedulableStore,
+    displayedSchedulableOrderStore
+  } from '../../../lib/stores/schedulableStore'
+  import { displayedSchedulerDetails } from '../../../lib/stores/schedulerDetails'
+  import { isPaused, isViewingHistorical } from '../../../lib/stores/historyStore'
   import { update } from '../../../lib/stores/windows'
   import SchedulableRow from './SchedulableRow.svelte'
 
@@ -9,26 +13,36 @@
 </script>
 
 <div class="scheduler-container">
+  {#if $isPaused}
+    <div class="pause-indicator" class:historical={$isViewingHistorical}>
+      {#if $isViewingHistorical}
+        Viewing tick {$displayedSchedulerDetails.tick}
+      {:else}
+        Paused at tick {$displayedSchedulerDetails.tick}
+      {/if}
+    </div>
+  {/if}
+
   <div class="header-info">
     <div class="stat">
       <span class="stat-label">Tick</span>
-      <span class="stat-value">{$schedulerDetails.tick}</span>
+      <span class="stat-value">{$displayedSchedulerDetails.tick}</span>
     </div>
     <div class="stat">
       <span class="stat-label">Exec Time</span>
-      <span class="stat-value">{$schedulerDetails.executionTime.toFixed(1)}ms</span>
+      <span class="stat-value">{$displayedSchedulerDetails.executionTime.toFixed(1)}ms</span>
     </div>
   </div>
 
   <div class="section">
     <div class="section-header">
       <span class="section-title">Execution Order</span>
-      <span class="count">{$schedulableOrderStore.length}</span>
+      <span class="count">{$displayedSchedulableOrderStore.length}</span>
     </div>
 
     <ul class="order-list">
-      {#each $schedulableOrderStore as itemId, index (itemId)}
-        {@const schedulable = $schedulableStore.get(itemId)}
+      {#each $displayedSchedulableOrderStore as itemId, index (itemId)}
+        {@const schedulable = $displayedSchedulableStore.get(itemId)}
         {#if schedulable}
           <SchedulableRow {itemId} {schedulable} {index} />
         {/if}
@@ -45,6 +59,25 @@
     flex-direction: column;
     height: 100%;
     gap: 16px;
+  }
+
+  .pause-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    background-color: rgb(60, 80, 50);
+    border: 1px solid rgb(80, 110, 70);
+    border-radius: 8px;
+    color: rgb(180, 220, 160);
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  .pause-indicator.historical {
+    background-color: rgb(80, 60, 40);
+    border-color: rgb(120, 90, 60);
+    color: rgb(220, 180, 140);
   }
 
   .header-info {

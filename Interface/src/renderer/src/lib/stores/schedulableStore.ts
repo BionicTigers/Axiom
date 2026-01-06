@@ -1,7 +1,12 @@
-import { get, writable, type Writable } from 'svelte/store'
+import { get, writable, derived, type Writable } from 'svelte/store'
 
 import { registerNetworkEvent } from '../networkRegistry'
 import type { UUID } from '../types'
+import {
+  displayedSnapshot,
+  isPaused,
+  type SchedulableSnapshot
+} from './historyStore'
 
 // Types now sourced from ../types
 
@@ -51,7 +56,7 @@ type SchedulableStateUpdate = Array<{
 
 type SchedulableOrder = UUID[]
 
-class StateMap extends Map<string, CommandState> {
+export class StateMap extends Map<string, CommandState> {
   constructor(initial: Map<string, CommandState> | Record<string, CommandState>) {
     if (initial instanceof Map) {
       super(initial)
@@ -153,10 +158,92 @@ export function editState(path: string, value: CommandStateValueBase) {
   )
 }
 
+// ============================================================================
+// Live Stores (current real-time data)
+// ============================================================================
+
 export const schedulableStore = writable<Map<UUID, Schedulable>>(new Map())
 export const schedulableOrderStore = writable<Array<UUID>>([])
+
+// ============================================================================
+// Displayed Stores (historical or live based on pause state)
+// ============================================================================
+
+// Convert a SchedulableSnapshot to a Schedulable
+function snapshotToSchedulable(snapshot: SchedulableSnapshot): Schedulable {
+  return {
+    name: snapshot.name,
+    type: snapshot.type,
+    parent: snapshot.parent,
+    state: writable(new StateMap(snapshot.state))
+  }
+}
+
+// Displayed schedulables - shows historical data when paused, live data otherwise
+export const displayedSchedulableStore = derived(
+  [displayedSnapshot, schedulableStore, isPaused],
+  ([$snapshot, $live, $isPaused]) => {
+    // Only use snapshot when actually paused
+    if ($isPaused && $snapshot) {
+      // Convert snapshot schedulables to the expected format
+      const displayed = new Map<UUID, Schedulable>()
+      for (const [id, snap] of $snapshot.schedulables) {
+        displayed.set(id, snapshotToSchedulable(snap))
+      }
+      return displayed
+    }
+    return $live
+  }
+)
+
+// Displayed order - shows historical data when paused, live data otherwise
+export const displayedSchedulableOrderStore = derived(
+  [displayedSnapshot, schedulableOrderStore, isPaused],
+  ([$snapshot, $live, $isPaused]) => {
+    // Only use snapshot when actually paused
+    if ($isPaused && $snapshot) {
+      return $snapshot.schedulableOrder
+    }
+    return $live
+  }
+)
+
+// ============================================================================
+// Snapshot Creation Helper
+// ============================================================================
+
+/**
+ * Create a deep copy snapshot of current schedulable state
+ */
+export function createSchedulablesSnapshot(): Map<UUID, SchedulableSnapshot> {
+  const current = get(schedulableStore)
+  const snapshot = new Map<UUID, SchedulableSnapshot>()
+
+  for (const [id, schedulable] of current) {
+    const stateMap = get(schedulable.state)
+    const stateCopy: Record<string, CommandState> = {}
+
+    for (const [key, value] of stateMap) {
+      // Deep copy the state value
+      stateCopy[key] = JSON.parse(JSON.stringify(value))
+    }
+
+    snapshot.set(id, {
+      name: schedulable.name,
+      type: schedulable.type,
+      parent: schedulable.parent,
+      state: stateCopy
+    })
+  }
+
+  return snapshot
+}
+
+// ============================================================================
+// Network Event Registration
+// ============================================================================
 
 registerNetworkEvent('schedulable_initial', updateSchedulablesFromInitial)
 registerNetworkEvent('schedulable_update', updateSchedulables)
 registerNetworkEvent('schedulable_state_update', updateStates)
-registerNetworkEvent('schedulable_order', setOrder) // Command state types used across registry components
+registerNetworkEvent('schedulable_order', setOrder)

@@ -319,6 +319,7 @@ app.whenReady().then(() => {
       return true
     } catch (err) {
       console.error('[main] Download failed:', err)
+      sendToRenderer('update-error', { message: err instanceof Error ? err.message : 'Download failed' })
       return false
     }
   })

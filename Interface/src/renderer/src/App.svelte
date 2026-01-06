@@ -8,10 +8,13 @@
   import './lib/stores/schedulableStore'
   import './lib/stores/schedulerDetails'
   import './lib/stores/graphStore'
+  import './lib/stores/behaviorTreeStore'
   import WindowManager from './components/windows/WindowManager.svelte'
   import NotificationContainer from './components/notifications/NotificationContainer.svelte'
   import { schedulableOrderStore, schedulableStore } from './lib/stores/schedulableStore'
   import { clearAllSeries } from './lib/stores/graphStore'
+  import { clearHistory } from './lib/stores/historyStore'
+  import { clearAllTrees } from './lib/stores/behaviorTreeStore'
   import { addNotification, NotificationType } from './lib/stores/notificationStore'
 
   let isConnected = $state(false)
@@ -37,6 +40,8 @@
       schedulableOrderStore.set([])
       schedulableStore.set(new Map())
       clearAllSeries()
+      clearHistory()
+      clearAllTrees()
       isConnected = false
     })
 

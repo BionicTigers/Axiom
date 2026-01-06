@@ -27,7 +27,8 @@
 
   const commandOptions = [
     { label: 'States', component: registry.States },
-    { label: 'Scheduler', component: registry.Scheduler }
+    { label: 'Scheduler', component: registry.Scheduler },
+    { label: 'Behavior Tree', component: registry.BehaviorTreeDebugger }
   ]
 
   const gamepadOptions = [{ label: 'Gamepad Overview', component: registry.GamepadViewer }]

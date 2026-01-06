@@ -197,6 +197,9 @@ internal object DeltaResolver {
         return when (state) {
             is Number, is String, is Char, is Boolean -> Value(state, metadata)
             is Duration -> Value(state.inWholeMilliseconds, metadata)
+            is Map<*, *> -> state.entries.associate { (k, v) ->
+                k.toString() to serializeVariable(v, metadata.copy(readonly = true))
+            }
             is Collection<*> -> state.map {
                 serializeVariable(it!!, metadata.copy(readonly = false))
             }

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Component } from 'svelte'
-  import { schedulableStore } from '../../../lib/stores/schedulableStore'
+  import { displayedSchedulableStore } from '../../../lib/stores/schedulableStore'
   import { add, bringToFront, update } from '../../../lib/stores/windows'
   import StateView from './StateView.svelte'
 
@@ -11,7 +11,7 @@
   let currentExpanded = $state(true)
 
   function openCommandState(id: string) {
-    let schedulable = $schedulableStore.get(id)
+    let schedulable = $displayedSchedulableStore.get(id)
     if (!schedulable) return
     add({ id: id, title: schedulable.name, component: StateView as Component })
     bringToFront(schedulable.name)
@@ -20,7 +20,7 @@
   let search = $state('')
 
   let filteredStates = $derived(
-    Array.from($schedulableStore).filter(([_, schedulable]) => {
+    Array.from($displayedSchedulableStore).filter(([_, schedulable]) => {
       if (search === '') return true
       return schedulable.name.toLowerCase().includes(search.toLowerCase())
     })
