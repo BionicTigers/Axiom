@@ -46,6 +46,9 @@ function tryConnect(urls: string[]): void {
         })
         ws = testWs
         setupEventHandlers(ws)
+        // The 'open' event already fired, so we need to manually notify
+        // that the connection is established
+        ipcRenderer.send('axiom-connected')
       }
     })
 
