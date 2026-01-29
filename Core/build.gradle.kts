@@ -55,6 +55,8 @@ android {
 val ftcVersion = "11.0.0"
 
 dependencies {
+    api(project(":annotations"))
+
     mockImplementation(project(":MockFTC"))
     mockImplementation("org.nanohttpd:nanohttpd-websocket:2.3.1")
 
