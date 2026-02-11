@@ -1,12 +1,11 @@
 plugins {
     id("org.jetbrains.kotlin.jvm")
-    id("org.jetbrains.dokka")
     id("com.vanniktech.maven.publish")
     id("signing")
 }
 
 group = "io.github.bionictigers.axiom"
-version = "0.2.5"
+version = "0.2.6"
 
 java {
     toolchain {
