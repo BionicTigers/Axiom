@@ -9,6 +9,8 @@ pluginManagement {
         id("com.android.library") version "8.5.2"
         id("org.jetbrains.kotlin.android") version "2.2.0"
         id("org.jetbrains.kotlin.jvm") version "2.2.0"
+        id("org.jetbrains.dokka") version "2.0.0"
+        id("com.vanniktech.maven.publish") version "0.33.0"
     }
 }
 

@@ -57,6 +57,13 @@ object Server {
 
     private val newConnectionCallbacks: List<((Serializable) -> Unit) -> Unit> = mutableListOf()
 
+    /**
+     * Returns true if at least one Seek client is connected.
+     * Cheap O(1) check used to skip serialization work when nobody is listening.
+     */
+    val hasConnections: Boolean
+        get() = synchronized(connections) { connections.isNotEmpty() }
+
     // Moshi instance configured with the Kotlin adapter
     private val moshi: Moshi = Moshi.Builder()
         .add(PolymorphicJsonAdapterFactory.of(IncomingMessage::class.java, "type")

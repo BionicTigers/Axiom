@@ -1,7 +1,7 @@
 plugins {
     id("org.jetbrains.kotlin.jvm")
-    id("org.jetbrains.dokka") version "2.0.0"
-    id("com.vanniktech.maven.publish") version "0.34.0"
+    id("org.jetbrains.dokka")
+    id("com.vanniktech.maven.publish")
     id("signing")
 }
 

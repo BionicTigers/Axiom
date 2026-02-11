@@ -62,10 +62,15 @@ export class StateMap extends Map<string, CommandState> {
   }
 
   getMetadata(field: string): StateMetadata {
-    const raw = (this.get(field) as CommandStateValue | undefined)?.metadata as
+    const m = (this.get(field) as CommandStateValue | undefined)?.metadata as
       | Partial<StateMetadata>
       | undefined
-    return { ...defaultStateMetadata, ...(raw ?? {}) }
+    // Default to editable (readonly: false) unless explicitly set to readonly
+    return {
+      readonly: m?.readonly ?? false,
+      priority: m?.priority ?? defaultStateMetadata.priority,
+      hidden: m?.hidden ?? defaultStateMetadata.hidden
+    }
   }
 
   getValue(field: string): CommandStateValueBase {
@@ -74,8 +79,14 @@ export class StateMap extends Map<string, CommandState> {
 
   getState(field: string): [CommandStateValueBase, StateMetadata] {
     const value = this.get(field) as CommandStateValue | undefined
-    const metadata = (value?.metadata as Partial<StateMetadata> | undefined) ?? {}
-    return [value?.value ?? null, { ...defaultStateMetadata, ...metadata }]
+    const m = value?.metadata as Partial<StateMetadata> | undefined
+    // Default to editable (readonly: false) unless explicitly set to readonly
+    const resolvedMeta: StateMetadata = {
+      readonly: m?.readonly ?? false,
+      priority: m?.priority ?? defaultStateMetadata.priority,
+      hidden: m?.hidden ?? defaultStateMetadata.hidden
+    }
+    return [value?.value ?? null, resolvedMeta]
   }
 }
 

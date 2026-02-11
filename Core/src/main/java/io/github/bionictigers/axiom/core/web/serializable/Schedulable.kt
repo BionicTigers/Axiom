@@ -107,3 +107,72 @@ internal data class StateUpdate(
         )
     }
 }
+
+/**
+ * Detailed scheduler debug metrics with rolling averages.
+ * All times are in milliseconds.
+ */
+internal data class SchedulerDebug(
+    // Current tick values
+    val currentTotal: Double,
+    val currentCommands: Double,
+    val currentAxiomOverhead: Double,
+    val currentQueueProcessing: Double,
+    val currentDependencySort: Double,
+    val currentSerialization: Double,
+    val currentSerializedStates: Double,
+    val currentSerializedFields: Double,
+    val currentDeltaResolution: Double,
+    val currentNetworkSend: Double,
+    val currentConnectionCallbacks: Double,
+    // Rolling averages
+    val avgTotal: Double,
+    val avgCommands: Double,
+    val avgAxiomOverhead: Double,
+    val avgQueueProcessing: Double,
+    val avgDependencySort: Double,
+    val avgSerialization: Double,
+    val avgSerializedStates: Double,
+    val avgSerializedFields: Double,
+    val avgDeltaResolution: Double,
+    val avgNetworkSend: Double,
+    val avgConnectionCallbacks: Double,
+    // Command count
+    val commandCount: Int
+) : Serializable {
+    override fun serialize(tick: Long): Map<String, Any?> {
+        return mapOf(
+            "name" to "scheduler_debug",
+            "tick" to tick,
+            "data" to mapOf(
+                "current" to mapOf(
+                    "total" to currentTotal,
+                    "commands" to currentCommands,
+                    "axiomOverhead" to currentAxiomOverhead,
+                    "queueProcessing" to currentQueueProcessing,
+                    "dependencySort" to currentDependencySort,
+                    "serialization" to currentSerialization,
+                    "serializedStates" to currentSerializedStates,
+                    "serializedFields" to currentSerializedFields,
+                    "deltaResolution" to currentDeltaResolution,
+                    "networkSend" to currentNetworkSend,
+                    "connectionCallbacks" to currentConnectionCallbacks
+                ),
+                "average" to mapOf(
+                    "total" to avgTotal,
+                    "commands" to avgCommands,
+                    "axiomOverhead" to avgAxiomOverhead,
+                    "queueProcessing" to avgQueueProcessing,
+                    "dependencySort" to avgDependencySort,
+                    "serialization" to avgSerialization,
+                    "serializedStates" to avgSerializedStates,
+                    "serializedFields" to avgSerializedFields,
+                    "deltaResolution" to avgDeltaResolution,
+                    "networkSend" to avgNetworkSend,
+                    "connectionCallbacks" to avgConnectionCallbacks
+                ),
+                "commandCount" to commandCount
+            )
+        )
+    }
+}

@@ -28,6 +28,7 @@
   const commandOptions = [
     { label: 'States', component: registry.States },
     { label: 'Scheduler', component: registry.Scheduler },
+    { label: 'Scheduler Debug', component: registry.SchedulerDebug },
     { label: 'Behavior Tree', component: registry.BehaviorTreeDebugger }
   ]
 

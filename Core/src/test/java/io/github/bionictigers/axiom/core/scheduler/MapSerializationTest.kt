@@ -108,7 +108,9 @@ class MapSerializationTest {
         
         // Create a ValueMetadata for the call
         val valueMetadataClass = Class.forName("io.github.bionictigers.axiom.core.web.ValueMetadata")
-        val metadataConstructor = valueMetadataClass.constructors.first()
+        val metadataConstructor = valueMetadataClass.constructors
+            .firstOrNull { it.parameterCount == 3 }
+            ?: throw RuntimeException("Could not find ValueMetadata 3-arg constructor")
         val metadata = metadataConstructor.newInstance(true, 0, false)
         
         return method.call(deltaResolver, value, metadata)

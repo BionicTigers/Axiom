@@ -42,13 +42,16 @@
     }
 
     const v = value as CommandStateValue
-    const m = v.metadata
+    const m = v.metadata as Partial<StateMetadata> | undefined
 
-    if (m) {
-      return [v.value, { ...defaultStateMetadata, ...m }]
+    // Default to editable (readonly: false) for nested values unless explicitly set to readonly
+    const resolvedMeta: StateMetadata = {
+      readonly: m?.readonly ?? false,
+      priority: m?.priority ?? defaultStateMetadata.priority,
+      hidden: m?.hidden ?? defaultStateMetadata.hidden
     }
 
-    return [v.value, { ...defaultStateMetadata, readonly: false }]
+    return [v.value, resolvedMeta]
   })
 
   $effect(() => {
@@ -73,10 +76,17 @@
   function priorityOf(node: CommandState): number {
     if (Array.isArray(node)) return 0
     if (typeof node === 'object' && node !== null) {
+      // Check if this is a leaf node with metadata containing priority
       if ('value' in node && !Array.isArray(node)) {
-        const v = (node as CommandStateValue).value
-        return typeof v === 'number' ? Number(v) : 0
+        const leaf = node as CommandStateValue
+        const m = leaf.metadata as Partial<StateMetadata> | undefined
+        if (m && typeof m.priority === 'number') {
+          return m.priority
+        }
+        // Fallback: use value itself if numeric
+        return typeof leaf.value === 'number' ? Number(leaf.value) : 0
       }
+      // Check for nested object with a 'priority' field
       const pr = (node as Record<string, CommandState>)['priority']
       if (pr && typeof pr === 'object' && 'value' in pr) {
         const pv = (pr as CommandStateValue).value
@@ -89,6 +99,18 @@
   const sortedArray = $derived(
     isArrayNode
       ? [...(value as CommandState[])].sort((a, b) => priorityOf(b) - priorityOf(a))
+      : null
+  )
+
+  const isPlainObject = $derived(
+    typeof value === 'object' && value !== null && !isArrayNode && !isLeafNode
+  )
+
+  const objectEntries = $derived(
+    isPlainObject
+      ? Object.entries(value as Record<string, CommandState>).sort(
+          ([, a], [, b]) => priorityOf(b) - priorityOf(a)
+        )
       : null
   )
 
@@ -196,26 +218,41 @@
   </div>
 {/snippet}
 
-{#snippet genericObject(obj: unknown)}
-  <div class="row leaf-row">
+{#snippet objectGroup(entries: [string, CommandState][])}
+  <button class="row group-header" onclick={toggle} aria-expanded={expanded} title="Toggle">
+    <span class="chevron">{expanded ? '▾' : '▸'}</span>
     <span class="key">{label}</span>
-    <span class="spacer"></span>
-    {#if isCircular}
-      <span class="readonly">circular</span>
-    {:else}
-      <span class="val">{JSON.stringify(obj)}</span>
-    {/if}
-  </div>
+    <span class="meta">{`{${entries.length}}`}</span>
+  </button>
+
+  {#if isCircular}
+    <div class="row circular">
+      <span class="chevron">⟲</span><span class="key">circular reference</span>
+    </div>
+  {:else if expanded}
+    <ul class="children">
+      {#each entries as [key, child] (key)}
+        <Self
+          label={key}
+          value={child}
+          {stateMap}
+          path={`${path}.${key}`}
+          isRoot={false}
+          seen={childSeen}
+        />
+      {/each}
+    </ul>
+  {/if}
 {/snippet}
 
 {#if !meta.hidden}
   <li class={isGroup ? 'group' : 'leaf'}>
     {#if isArrayNode && sortedArray}
       {@render arrayGroup(sortedArray)}
+    {:else if isPlainObject && objectEntries}
+      {@render objectGroup(objectEntries)}
     {:else if isLeafNode}
       {@render leaf(displayValue, meta)}
-    {:else}
-      {@render genericObject(value)}
     {/if}
   </li>
 {/if}

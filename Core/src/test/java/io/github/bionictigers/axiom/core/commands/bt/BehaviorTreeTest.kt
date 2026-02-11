@@ -1,5 +1,6 @@
 package io.github.bionictigers.axiom.core.commands.bt
 
+import io.github.bionictigers.axiom.core.commands.Command
 import io.github.bionictigers.axiom.core.commands.bt.composites.Parallel
 import io.github.bionictigers.axiom.core.commands.bt.composites.ParallelPolicy
 import io.github.bionictigers.axiom.core.commands.bt.composites.Selector
@@ -13,6 +14,7 @@ import io.github.bionictigers.axiom.core.commands.bt.leaves.Condition
 import io.github.bionictigers.axiom.core.commands.bt.leaves.Wait
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import kotlin.reflect.jvm.isAccessible
 import kotlin.time.Duration.Companion.milliseconds
 
 class BehaviorTreeTest {
@@ -265,14 +267,18 @@ class BehaviorTreeTest {
     // ===== HELPER FUNCTIONS =====
 
     private fun simulateEnter(command: BtCommand<*>) {
-        val method = command::class.java.superclass.getDeclaredMethod("schedulerEnter")
+        val method = Command::class.members
+            .firstOrNull { it.name.startsWith("schedulerEnter") }
+            ?: throw RuntimeException("Could not find schedulerEnter")
         method.isAccessible = true
-        method.invoke(command)
+        method.call(command)
     }
 
     private fun simulateExecute(command: BtCommand<*>) {
-        val method = command::class.java.superclass.getDeclaredMethod("execute")
+        val method = Command::class.members
+            .firstOrNull { it.name.startsWith("execute") }
+            ?: throw RuntimeException("Could not find execute")
         method.isAccessible = true
-        method.invoke(command)
+        method.call(command)
     }
 }

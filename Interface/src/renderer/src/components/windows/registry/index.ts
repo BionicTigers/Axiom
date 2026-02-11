@@ -1,5 +1,6 @@
 export { default as States } from './States.svelte'
 export { default as Scheduler } from './Scheduler.svelte'
+export { default as SchedulerDebug } from './SchedulerDebug.svelte'
 export { default as GamepadViewer } from './GamepadViewer.svelte'
 export { default as HardwareViewer } from './HardwareViewer.svelte'
 export { default as Config } from './Config.svelte'

@@ -30,6 +30,22 @@ internal object SchedulerState {
     var inUpdateCycle = false
 
     /**
+     * Minimum interval (in milliseconds) between state streaming updates to Seek.
+     * Defaults to 50ms (~20Hz). Set to 0 to stream every tick (legacy behavior).
+     */
+    var streamIntervalMs: Long = 50L
+
+    /**
+     * Timestamp of the last state stream (System.nanoTime() / 1_000_000).
+     */
+    var lastStreamTimeMs: Long = 0L
+
+    /**
+     * How many schedulables to warm up (snapshot) per tick when a client connects.
+     */
+    var warmupBatchSize: Int = 2
+
+    /**
      * Add a system to the scheduler state.
      *
      * @param system The system to add.
@@ -67,6 +83,7 @@ internal object SchedulerState {
         addQueue.clear()
         removeQueue.clear()
         editQueue.clear()
+        lastStreamTimeMs = 0L
     }
 
     fun processAddQueue() {

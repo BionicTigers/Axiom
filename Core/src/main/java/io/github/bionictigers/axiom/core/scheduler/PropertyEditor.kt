@@ -6,9 +6,12 @@ import io.github.bionictigers.axiom.core.commands.Schedulable
 import io.github.bionictigers.axiom.core.utils.findPropertyInHierarchy
 import io.github.bionictigers.axiom.core.web.Server
 import io.github.bionictigers.axiom.core.web.serializable.Notification
+import kotlin.math.abs
+import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty1
-import kotlin.reflect.KProperty
+import kotlin.reflect.KProperty1
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
 
@@ -79,13 +82,13 @@ internal object PropertyEditor {
             }
         }
 
-        // Handle Property Reflection
+        // Handle Property Reflection (use KProperty1 to support both val and var)
         val prop = current::class.memberProperties
-            .find { it.name == segment } as? KMutableProperty1<*, *>
+            .find { it.name == segment } as? KProperty1<Any, *>
             ?: return null
 
         prop.isAccessible = true
-        return prop.getter.call(current)
+        return prop.get(current)
     }
 
     private fun applyValue(parent: Any, leaf: String, rawValue: String) {
@@ -121,13 +124,13 @@ internal object PropertyEditor {
                 list[index] = rawValue.convertTo(targetType)
             }
             // Primitive arrays must be handled explicitly in Kotlin
-            is IntArray -> container[index] = rawValue.toInt()
-            is LongArray -> container[index] = rawValue.toLong()
+            is IntArray -> container[index] = rawValue.toIntLike()
+            is LongArray -> container[index] = rawValue.toLongLike()
             is FloatArray -> container[index] = rawValue.toFloat()
             is DoubleArray -> container[index] = rawValue.toDouble()
             is BooleanArray -> container[index] = rawValue.toBooleanStrict()
-            is ShortArray -> container[index] = rawValue.toShort()
-            is ByteArray -> container[index] = rawValue.toByte()
+            is ShortArray -> container[index] = rawValue.toShortLike()
+            is ByteArray -> container[index] = rawValue.toByteLike()
             is CharArray -> container[index] = rawValue.single()
             is Array<*> -> {
                 // Object Arrays
@@ -150,15 +153,57 @@ internal object PropertyEditor {
 
     fun String.convertTo(kClass: KClass<*>?): Any {
         return when (kClass) {
-            Int::class -> this.toInt()
-            Long::class -> this.toLong()
+            Int::class -> this.toIntLike()
+            Long::class -> this.toLongLike()
             Double::class -> this.toDouble()
             Float::class -> this.toFloat()
             Boolean::class -> this.toBooleanStrict()
-            Byte::class -> this.toByte()
-            Short::class -> this.toShort()
+            Byte::class -> this.toByteLike()
+            Short::class -> this.toShortLike()
             Char::class -> this.single()
+            // Handle abstract Number type - parse as Double (most general numeric type)
+            Number::class -> this.toDouble()
             else -> this // Default to String
         }
+    }
+
+    private fun String.toIntLike(): Int {
+        val trimmed = trim()
+        trimmed.toIntOrNull()?.let { return it }
+        val asDouble = trimmed.toDoubleOrNull()
+            ?: throw NumberFormatException("For input string: \"$this\"")
+        val rounded = asDouble.roundToInt().toDouble()
+        if (!asDouble.isFinite() || abs(asDouble - rounded) > 1e-9) {
+            throw NumberFormatException("For input string: \"$this\"")
+        }
+        return rounded.toInt()
+    }
+
+    private fun String.toLongLike(): Long {
+        val trimmed = trim()
+        trimmed.toLongOrNull()?.let { return it }
+        val asDouble = trimmed.toDoubleOrNull()
+            ?: throw NumberFormatException("For input string: \"$this\"")
+        val rounded = asDouble.roundToLong().toDouble()
+        if (!asDouble.isFinite() || abs(asDouble - rounded) > 1e-9) {
+            throw NumberFormatException("For input string: \"$this\"")
+        }
+        return rounded.toLong()
+    }
+
+    private fun String.toShortLike(): Short {
+        val value = toLongLike()
+        if (value < Short.MIN_VALUE || value > Short.MAX_VALUE) {
+            throw NumberFormatException("For input string: \"$this\"")
+        }
+        return value.toShort()
+    }
+
+    private fun String.toByteLike(): Byte {
+        val value = toLongLike()
+        if (value < Byte.MIN_VALUE || value > Byte.MAX_VALUE) {
+            throw NumberFormatException("For input string: \"$this\"")
+        }
+        return value.toByte()
     }
 }

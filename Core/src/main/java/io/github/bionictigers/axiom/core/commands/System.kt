@@ -1,7 +1,6 @@
 package io.github.bionictigers.axiom.core.commands
 
 import io.github.bionictigers.axiom.core.web.Hidden
-import java.util.UUID
 
 /**
  * A system is the base class for all systems/mechanisms.
@@ -16,7 +15,7 @@ abstract class System : Schedulable {
     @Hidden
     abstract val name: String
     @Hidden
-    override val id: String = UUID.randomUUID().toString()
+    override val id: String = javaClass.name.hashCode().toUInt().toString(16)
 
     @Hidden
     open val dependencies: List<System> = emptyList()

@@ -4,13 +4,13 @@ import java.util.Base64
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.dokka") version "2.0.0"      // optional but recommended for javadoc
-    id("com.vanniktech.maven.publish") version "0.34.0"
+    id("org.jetbrains.dokka")      // optional but recommended for javadoc
+    id("com.vanniktech.maven.publish")
     id("signing")
 }
 
 group = "io.github.bionictigers"
-version = "0.2.5"
+version = "0.2.6"
 
 java {
     toolchain {
